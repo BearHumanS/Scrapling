@@ -1,6 +1,9 @@
 # 경제 · 육성 · 밸런스 (Economy & Progression)
 
-> **상태:** 🟡 초안 · **버전:** v0.1 · **최종수정일:** 2026-06-30 · **작성자:** 기획팀
+> **상태:** 🟠 리뷰 · **버전:** v0.2 · **최종수정일:** 2026-06-30 · **작성자:** 기획팀
+>
+> **v0.2 반영**: 메타 재화는 **캠페인·로그라이트 공용**(하이브리드). 수치 예시는
+> [content-tables](content-tables.md) 참조.
 >
 > 상위: [GDD](GDD.md) · 관련: [board-system](board-system.md) · [rpg-combat](rpg-combat.md)
 

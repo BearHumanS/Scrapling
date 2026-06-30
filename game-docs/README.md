@@ -9,7 +9,9 @@
 | **플랫폼** | PC / Steam 우선 (추후 확장 여지) |
 | **엔진** | Godot 4.x |
 | **플레이 방식** | 단계적 — 싱글플레이(AI 상대) 우선 출시 → 온라인 멀티 확장 |
-| **목표** | 본격 상업 출시 |
+| **메인 구조** | 하이브리드 — 캠페인 + 로그라이트(공용 메타 성장) |
+| **톤앤매너** | 혼합 — 명랑(기본) + 긴장(보스·위기) |
+| **목표** | 본격 상업 출시 (얼리 액세스 → 1.0) |
 | **그래픽** | 도트(픽셀아트) |
 | **언어** | 한국어 우선, 다국어 현지화 고려 |
 
@@ -28,10 +30,13 @@
 | | [rpg-combat](02-gdd/rpg-combat.md) | 전투/스킬/캐릭터 클래스 |
 | | [economy-progression](02-gdd/economy-progression.md) | 경제·재화·육성·밸런스 |
 | | [narrative](02-gdd/narrative.md) | 세계관/스토리/퀘스트/NPC |
+| | [content-tables](02-gdd/content-tables.md) | 클래스·적·아이템·스킬·이벤트 데이터 |
+| | [ux-screens](02-gdd/ux-screens.md) | 화면 흐름·와이어프레임·UX 원칙 |
 | **03 기술** | [tech-stack](03-technical/tech-stack.md) | Godot 버전·플러그인·툴체인 |
 | | [architecture](03-technical/architecture.md) | 씬/노드 구조·데이터 모델·세이브 |
 | | [multiplayer-plan](03-technical/multiplayer-plan.md) | 싱글→멀티 단계적 네트워킹 설계 |
-| **04 아트** | [art-style-guide](04-art/art-style-guide.md) | 해상도·팔레트·스프라이트·애니메이션 규격 |
+| **04 아트·사운드** | [art-style-guide](04-art/art-style-guide.md) | 해상도·팔레트·스프라이트·애니메이션 규격 |
+| | [sound-design](04-art/sound-design.md) | BGM/SFX·적응형 오디오·에셋 규격 |
 | **05 프로덕션** | [roadmap](05-production/roadmap.md) | 마일스톤·일정 |
 | | [risk-register](05-production/risk-register.md) | 리스크 식별·완화책 |
 | **06 비즈니스** | [steam-release-plan](06-business/steam-release-plan.md) | Steamworks 셋업·출시 체크리스트 |
@@ -53,21 +58,24 @@
 
 | 문서 | 상태 | 버전 |
 |------|------|------|
-| concept-brief | 🟡 초안 | v0.1 |
-| PRD | 🟡 초안 | v0.1 |
-| GDD | 🟡 초안 | v0.1 |
+| concept-brief | 🟠 리뷰 | v0.2 |
+| PRD | 🟠 리뷰 | v0.2 |
+| GDD | 🟠 리뷰 | v0.2 |
 | board-system | 🟡 초안 | v0.1 |
 | rpg-combat | 🟡 초안 | v0.1 |
-| economy-progression | 🟡 초안 | v0.1 |
-| narrative | 🟡 초안 | v0.1 |
+| economy-progression | 🟠 리뷰 | v0.2 |
+| narrative | 🟠 리뷰 | v0.2 |
+| content-tables | 🟡 초안 | v0.1 |
+| ux-screens | 🟡 초안 | v0.1 |
 | tech-stack | 🟡 초안 | v0.1 |
 | architecture | 🟡 초안 | v0.1 |
 | multiplayer-plan | 🟡 초안 | v0.1 |
-| art-style-guide | 🟡 초안 | v0.1 |
-| roadmap | 🟡 초안 | v0.1 |
+| art-style-guide | 🟠 리뷰 | v0.2 |
+| sound-design | 🟡 초안 | v0.1 |
+| roadmap | 🟠 리뷰 | v0.2 |
 | risk-register | 🟡 초안 | v0.1 |
-| steam-release-plan | 🟡 초안 | v0.1 |
-| monetization-marketing | 🟡 초안 | v0.1 |
+| steam-release-plan | 🟠 리뷰 | v0.2 |
+| monetization-marketing | 🟠 리뷰 | v0.2 |
 
 > 상태 범례: 🟡 초안(작성중) · 🟠 리뷰 · 🟢 확정
 
