@@ -30,8 +30,11 @@
 | | [rpg-combat](02-gdd/rpg-combat.md) | 전투/스킬/캐릭터 클래스 |
 | | [economy-progression](02-gdd/economy-progression.md) | 경제·재화·육성·밸런스 |
 | | [narrative](02-gdd/narrative.md) | 세계관/스토리/퀘스트/NPC |
+| | [world-outline](02-gdd/world-outline.md) | 세계관 설정·막(Act) 아웃라인·지역 카탈로그 |
 | | [act1-campaign](02-gdd/act1-campaign.md) | 1막 시나리오·비트시트·이벤트 스크립트·보스전 |
+| | [event-pool](02-gdd/event-pool.md) | 로그라이트/캠페인 공용 이벤트 풀(24종) |
 | | [content-tables](02-gdd/content-tables.md) | 클래스·적·아이템·스킬·이벤트 데이터 |
+| | [skill-trees](02-gdd/skill-trees.md) | 클래스별 스킬 트리·빌드 가이드 |
 | | [ux-screens](02-gdd/ux-screens.md) | 화면 흐름·와이어프레임·UX 원칙 |
 | **03 기술** | [tech-stack](03-technical/tech-stack.md) | Godot 버전·플러그인·툴체인 |
 | | [architecture](03-technical/architecture.md) | 씬/노드 구조·데이터 모델·세이브 |
@@ -66,8 +69,11 @@
 | rpg-combat | 🟡 초안 | v0.1 |
 | economy-progression | 🟠 리뷰 | v0.2 |
 | narrative | 🟠 리뷰 | v0.2 |
+| world-outline | 🟡 초안 | v0.1 |
 | act1-campaign | 🟡 초안 | v0.1 |
+| event-pool | 🟡 초안 | v0.1 |
 | content-tables | 🟡 초안 | v0.1 |
+| skill-trees | 🟡 초안 | v0.1 |
 | ux-screens | 🟡 초안 | v0.1 |
 | tech-stack | 🟡 초안 | v0.1 |
 | architecture | 🟡 초안 | v0.1 |
