@@ -35,6 +35,7 @@
 | | [event-pool](02-gdd/event-pool.md) | 로그라이트/캠페인 공용 이벤트 풀(24종) |
 | | [content-tables](02-gdd/content-tables.md) | 클래스·적·아이템·스킬·이벤트 데이터 |
 | | [skill-trees](02-gdd/skill-trees.md) | 클래스별 스킬 트리·빌드 가이드 |
+| | [balance-design](02-gdd/balance-design.md) | 성장/적 스케일/경제 수식·튜닝 파라미터 |
 | | [ux-screens](02-gdd/ux-screens.md) | 화면 흐름·와이어프레임·UX 원칙 |
 | **03 기술** | [tech-stack](03-technical/tech-stack.md) | Godot 버전·플러그인·툴체인 |
 | | [architecture](03-technical/architecture.md) | 씬/노드 구조·데이터 모델·세이브 |
@@ -74,6 +75,7 @@
 | event-pool | 🟡 초안 | v0.1 |
 | content-tables | 🟡 초안 | v0.1 |
 | skill-trees | 🟡 초안 | v0.1 |
+| balance-design | 🟡 초안 | v0.1 |
 | ux-screens | 🟡 초안 | v0.1 |
 | tech-stack | 🟡 초안 | v0.1 |
 | architecture | 🟡 초안 | v0.1 |

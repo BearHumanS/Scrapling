@@ -66,8 +66,10 @@
 
 ## 8. 결정 필요 (Open Questions)
 
-- [ ] 자산→스탯 환산 공식·계수
-- [ ] 레벨/적 스케일 곡선 파라미터
+> 수식·계수 골격은 [balance-design](balance-design.md)에 정리됨. 아래는 확정 대기 항목.
+
+- [ ] 자산→스탯 환산 계수(`ASSET_TO_STAT`) 1차 값 → [balance-design](balance-design.md)
+- [ ] 레벨/적 스케일 곡선 파라미터 → [balance-design](balance-design.md)
 - [ ] 메타 재화 명칭·획득량·강화 트리 규모
 - [ ] 경제 빌드와 전투 빌드의 파워 밸런스 기준
 - [ ] 로그라이트 난이도 상승 단계 수
