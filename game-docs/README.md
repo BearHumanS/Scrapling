@@ -40,6 +40,7 @@
 | **03 기술** | [tech-stack](03-technical/tech-stack.md) | Godot 버전·플러그인·툴체인 |
 | | [architecture](03-technical/architecture.md) | 씬/노드 구조·데이터 모델·세이브 |
 | | [multiplayer-plan](03-technical/multiplayer-plan.md) | 싱글→멀티 단계적 네트워킹 설계 |
+| | [prototype-scope](03-technical/prototype-scope.md) | M0 프로토타입 범위·폴더 구조·작업 순서·DoD |
 | **04 아트·사운드** | [art-style-guide](04-art/art-style-guide.md) | 해상도·팔레트·스프라이트·애니메이션 규격 |
 | | [sound-design](04-art/sound-design.md) | BGM/SFX·적응형 오디오·에셋 규격 |
 | **05 프로덕션** | [roadmap](05-production/roadmap.md) | 마일스톤·일정 |
@@ -80,6 +81,7 @@
 | tech-stack | 🟡 초안 | v0.1 |
 | architecture | 🟡 초안 | v0.1 |
 | multiplayer-plan | 🟡 초안 | v0.1 |
+| prototype-scope | 🟡 초안 | v0.1 |
 | art-style-guide | 🟠 리뷰 | v0.2 |
 | sound-design | 🟡 초안 | v0.1 |
 | roadmap | 🟠 리뷰 | v0.2 |
