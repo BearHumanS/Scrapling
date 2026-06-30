@@ -2,7 +2,7 @@
 
 > **상태:** 🟠 리뷰 · **버전:** v0.2 · **최종수정일:** 2026-06-30 · **작성자:** 기획팀
 >
-> 상위: [GDD](GDD.md) · 관련: [board-system](board-system.md)
+> 상위: [GDD](GDD.md) · 관련: [board-system](board-system.md) · [act1-campaign](act1-campaign.md)
 
 ---
 
