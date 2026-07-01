@@ -88,6 +88,8 @@
 - ✅ **M0 프로토타입 스캐폴딩 완료** → [`../game-prototype`](../game-prototype/README.md)
 
 ### 🔴 즉시 결정 필요 (다른 작업 차단)
+- [ ] **코어 방향**: 공유 보드(현행) vs **개별 보드 파밍·전투·방해**(검토중)
+  → 제안서 [proposal-dual-board](02-gdd/proposal-dual-board.md)
 - [ ] **정식 타이틀** 확정(상표·Steam 중복 검색) — 현재 가제 "다이스마블"
 - [ ] **캠페인 vs 로그라이트 콘텐츠 분량 배분**(EA 진입 기준)
 - [ ] **M0 로컬 실행 검증** (Godot 4.3에서 §4 DoD 체크)

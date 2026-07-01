@@ -45,6 +45,7 @@
 | | [skill-trees](02-gdd/skill-trees.md) | 클래스별 스킬 트리·빌드 가이드 |
 | | [balance-design](02-gdd/balance-design.md) | 성장/적 스케일/경제 수식·튜닝 파라미터 |
 | | [ux-screens](02-gdd/ux-screens.md) | 화면 흐름·와이어프레임·UX 원칙 |
+| | 🟠 [proposal-dual-board](02-gdd/proposal-dual-board.md) | **[제안]** 개별 보드 파밍·전투·방해 설계안(검토 대기) |
 | **03 기술** | [tech-stack](03-technical/tech-stack.md) | Godot 버전·플러그인·툴체인 |
 | | [architecture](03-technical/architecture.md) | 씬/노드 구조·데이터 모델·세이브 |
 | | [multiplayer-plan](03-technical/multiplayer-plan.md) | 싱글→멀티 단계적 네트워킹 설계 |
@@ -86,6 +87,7 @@
 | skill-trees | 🟡 초안 | v0.1 |
 | balance-design | 🟡 초안 | v0.1 |
 | ux-screens | 🟡 초안 | v0.1 |
+| proposal-dual-board | 🟠 제안·검토 | v0.1 |
 | tech-stack | 🟡 초안 | v0.1 |
 | architecture | 🟡 초안 | v0.1 |
 | multiplayer-plan | 🟡 초안 | v0.1 |
