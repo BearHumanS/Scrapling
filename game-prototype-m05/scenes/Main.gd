@@ -15,6 +15,8 @@ func _ready() -> void:
 	invasion_view.visible = false
 
 	board_view.roll_pressed.connect(_on_roll)
+	board_view.train_pressed.connect(_on_train)
+	board_view.sabotage_pressed.connect(_on_sabotage)
 	board_view.invade_pressed.connect(_on_invade)
 	invasion_view.finished.connect(_on_invasion_finished)
 
@@ -23,8 +25,25 @@ func _ready() -> void:
 	_refresh_board()
 
 func _refresh_board() -> void:
-	board_view.set_buttons(not GameState.won, GameState.invasion_available and not GameState.won)
+	var active: bool = not GameState.won
+	board_view.set_buttons(
+		active,
+		active and GameState.can_train(),
+		active and GameState.can_sabotage(),
+		active and GameState.invasion_available)
 	board_view.refresh()
+
+func _on_train() -> void:
+	if GameState.train():
+		GameState.add_log("훈련 완료: ATK +%d, HP +%d (골드 -%d)" % [
+			GameState.TRAIN_ATK, GameState.TRAIN_HP, GameState.TRAIN_COST])
+	_refresh_board()
+
+func _on_sabotage() -> void:
+	if GameState.sabotage():
+		GameState.add_log("AI 보드에 방해 트랩 설치! 코어 -%d (누적 -%d)" % [
+			GameState.SABO_DMG, GameState.ai_core_damage])
+	_refresh_board()
 
 func _on_roll() -> void:
 	if GameState.won:

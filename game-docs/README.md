@@ -88,7 +88,7 @@
 | event-pool | 🟡 초안 | v0.1 |
 | content-tables | 🟡 초안 | v0.1 |
 | skill-trees | 🟡 초안 | v0.1 |
-| balance-design | 🟡 초안 | v0.1 |
+| balance-design | 🟡 초안 | v0.2 |
 | ux-screens | 🟡 초안 | v0.1 |
 | proposal-dual-board | 🟠 채택·검토 | v0.2 |
 | round-tempo-system | 🟠 설계·검토 | v0.3 |

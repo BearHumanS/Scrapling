@@ -13,6 +13,14 @@ var total_harvest: int = 0
 # AI 보드(추상): 라운드에 따라 방어 성장
 var ai_round: int = 0
 var ai_tier: int = 1
+var ai_core_damage: int = 0   # 사보타주 누적 피해(내가 상대 보드에 심은 방해)
+
+# 골드 사용 비용/효과
+const TRAIN_COST := 30
+const TRAIN_ATK := 3
+const TRAIN_HP := 15
+const SABO_COST := 40
+const SABO_DMG := 60
 
 var invasion_available: bool = false
 var won: bool = false
@@ -29,6 +37,7 @@ func reset_game() -> void:
 	total_harvest = 0
 	ai_round = 0
 	ai_tier = 1
+	ai_core_damage = 0
 	invasion_available = false
 	won = false
 	log_lines.clear()
@@ -64,14 +73,31 @@ func harvest_tile(t: FarmTile) -> int:
 	hero.gold += got
 	t.store = 0.0
 	t.dev += 1
-	_recompute_hero()
 	return got
 
-func _recompute_hero() -> void:
-	hero.atk = 10 + total_harvest / 20
-	hero.max_hp = 100 + total_harvest / 8
-	if hero.hp > hero.max_hp:
-		hero.hp = hero.max_hp
+# 골드 → 자기 강화(훈련)
+func can_train() -> bool:
+	return hero.gold >= TRAIN_COST
+
+func train() -> bool:
+	if not can_train():
+		return false
+	hero.gold -= TRAIN_COST
+	hero.atk += TRAIN_ATK
+	hero.max_hp += TRAIN_HP
+	hero.hp += TRAIN_HP
+	return true
+
+# 골드 → 상대 보드 방해(사보타주: 코어에 트랩 설치)
+func can_sabotage() -> bool:
+	return hero.gold >= SABO_COST
+
+func sabotage() -> bool:
+	if not can_sabotage():
+		return false
+	hero.gold -= SABO_COST
+	ai_core_damage += SABO_DMG
+	return true
 
 # 이동(순수 주사위). 완주 시 라운드/티어 갱신. 반환: 완주 여부
 func move_hero(die: int) -> bool:
@@ -94,7 +120,7 @@ func ai_tick() -> void:
 		ai_tier = 1 + ai_round / 3
 
 func ai_core_hp() -> int:
-	return 80 * ai_tier + 15 * ai_round
+	return max(20, 80 * ai_tier + 15 * ai_round - ai_core_damage)
 
 func ai_defender_hp() -> int:
 	return 40 * ai_tier

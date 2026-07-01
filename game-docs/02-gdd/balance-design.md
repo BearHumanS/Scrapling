@@ -1,8 +1,10 @@
 # 밸런스 설계 (Balance Design)
 
-> **상태:** 🟡 초안 · **버전:** v0.1 · **최종수정일:** 2026-06-30 · **작성자:** 기획팀
+> **상태:** 🟡 초안 · **버전:** v0.2 · **최종수정일:** 2026-07-01 · **작성자:** 기획팀
 >
-> 상위: [GDD](GDD.md) · 관련: [economy-progression](economy-progression.md) · [rpg-combat](rpg-combat.md) · [content-tables](content-tables.md) · [skill-trees](skill-trees.md)
+> v0.2: M0.5 프로토타입 실측 계수(§10) 추가.
+>
+> 상위: [GDD](GDD.md) · 관련: [economy-progression](economy-progression.md) · [rpg-combat](rpg-combat.md) · [content-tables](content-tables.md) · [skill-trees](skill-trees.md) · [round-tempo-system](round-tempo-system.md) · [invasion-combat](invasion-combat.md)
 >
 > ⚠️ 모든 계수는 **출발점(시작값)** 이며 플레이테스트로 보정한다. 목적은
 > "튜닝 가능한 수식 골격"을 정의하는 것이지 최종 수치 확정이 아니다.
@@ -147,7 +149,51 @@ metaCost(node)  = baseCost * COST_GROWTH^tier   (COST_GROWTH = 1.6)
 | PRICE_DRIFT | 0.2 | 골드 싱크 |
 | COST_GROWTH | 1.6 | 메타 비용 곡선 |
 
-## 10. 결정 필요 (Open Questions)
+## 10. M0.5 프로토타입 실측 계수 (구현 반영)
+
+개별 보드 침공 슬라이스([`game-prototype-m05`](../../game-prototype-m05/README.md))에
+현재 적용된 **시작 계수**. 로컬 플레이테스트로 조정한다.
+관련 설계: [round-tempo-system](round-tempo-system.md), [invasion-combat](invasion-combat.md).
+
+### 파밍 축적 (Balance.gd)
+| 상수 | 값 | 의미 |
+|------|----|------|
+| `GEN_BASE` | 5.0 | 칸 축적 기본량/턴 |
+| `K` | 0.5 | 개발도 가중(축적·수확) |
+| `CAP_BASE` | 20.0 | 칸 축적 상한 기본 |
+```
+gen/턴 = GEN_BASE × tier × (1 + K × dev)
+cap    = CAP_BASE × tier
+착지: harvest = store(정수), store→0, dev+1
+```
+
+### 라운드/티어 (GameState.gd)
+- 완주 1회 = 라운드 +1, `tier = 1 + round/3` (3라운드마다 +1).
+- 라운드 3부터 침공 가능. 이동은 순수 주사위(1~6), **속도=운**.
+
+### 골드 사용 (전략 배분)
+| 행동 | 비용 | 효과 |
+|------|------|------|
+| 훈련 | 30G | 영웅 ATK +3, HP +15 |
+| 사보타주 | 40G | AI 코어 HP -60(누적) |
+
+### AI 보드 성장
+| 항목 | 공식 |
+|------|------|
+| AI 라운드 | 플레이어 턴 5회마다 +1 |
+| AI 티어 | `1 + ai_round/3` |
+| 코어 HP | `max(20, 80×티어 + 15×라운드 − 사보누적)` |
+| 수비병 | HP `40×티어`, ATK `8×티어` |
+| 트랩 | 피해 `15×티어`, 개수 `min(라운드, 3)` |
+
+### 전투(침공)
+- 피해 = §4 비율 감산 공식(적 방어 5 고정, 영웅 DEF 8 기본).
+- 침공: 트랩(피해)→수비병(전투)→코어(전투) 순차. 영웅 HP 0 = 실패(후퇴 시 절반 회복).
+
+> **튜닝 관찰 포인트**: 조기 침공 성공률, 훈련↔사보타주 선택 빈도, "빠름"이
+> 실제로 중립~불리인지(초반 취약 발현). 위 계수를 스프레드시트로 시뮬 후 보정.
+
+## 11. 결정 필요 (Open Questions)
 
 - [ ] 피해 공식: 비율 감산 vs 가산 감산 최종 채택
 - [ ] ASSET_TO_STAT 등 핵심 계수 1차 플레이테스트 값
