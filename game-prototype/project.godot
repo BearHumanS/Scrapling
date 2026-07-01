@@ -1,0 +1,25 @@
+; Godot 4.x 프로젝트 설정 — 다이스마블 M0 프로토타입
+; 로컬 Godot 4.3+ 에디터에서 이 폴더를 "가져오기(Import)"로 열어 실행하세요.
+
+config_version=5
+
+[application]
+
+config/name="다이스마블 프로토타입 (DiceMarble M0)"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[autoload]
+
+EventBus="*res://autoload/EventBus.gd"
+RNG="*res://autoload/RNG.gd"
+GameState="*res://autoload/GameState.gd"
+
+[display]
+
+window/size/viewport_width=1152
+window/size/viewport_height=648
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"

@@ -114,10 +114,18 @@ game-prototype/
 - 통과 → **M1 Vertical Slice**: 1구역 완성(아트/사운드/UX), 이벤트·상점·다클래스
   단계적 추가([roadmap](../05-production/roadmap.md), [act1-campaign](../02-gdd/act1-campaign.md)).
 
-## 11. 결정 필요 (Open Questions)
+## 11. 결정 사항 (Decisions) — 스캐폴딩 반영
 
-- [ ] 게임 코드 위치: 이 repo `game-prototype/` vs **별도 repo**
-- [ ] Godot 정확 버전 고정값([tech-stack](tech-stack.md)와 동기화)
-- [ ] M0 종료 조건(자산 비교 vs 보스 더미)
-- [ ] 보드 칸 수(12 vs 16) 프로토 값
+- ✅ **코드 위치**: 이 repo `game-prototype/` (추후 별도 repo로 추출 가능).
+- ✅ **엔진/언어**: Godot 4.3 / GDScript.
+- ✅ **M0 종료 조건**: 3바퀴 후 **자산 비교**.
+- ✅ **보드 칸 수**: 16칸.
+- ✅ **M0 UI**: 안정성 위해 Board/Combat을 **코드로 구성**(.tscn 최소화), M1에서 씬 분리.
+
+> 구현체: [`../../game-prototype`](../../game-prototype/README.md).
+
+## 12. 결정 필요 (Open Questions)
+
+- [ ] 별도 repo 추출 시점(M1 착수 전 vs 후)
 - [ ] GUT 단위 테스트 도입 여부(M0 vs M1)
+- [ ] Godot 버전 상향(4.3 → 최신 안정) 시점
