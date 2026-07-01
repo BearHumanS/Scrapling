@@ -2,7 +2,7 @@
 
 > **상태:** 🟠 리뷰 · **버전:** v0.2 · **최종수정일:** 2026-06-30 · **작성자:** 기획팀
 >
-> 하위 문서: [board-system](board-system.md) · [rpg-combat](rpg-combat.md) · [economy-progression](economy-progression.md) · [narrative](narrative.md) · [world-outline](world-outline.md) · [act1-campaign](act1-campaign.md) · [event-pool](event-pool.md) · [content-tables](content-tables.md) · [skill-trees](skill-trees.md) · [balance-design](balance-design.md) · [ux-screens](ux-screens.md) · [proposal-dual-board](proposal-dual-board.md) · [round-tempo-system](round-tempo-system.md)
+> 하위 문서: [board-system](board-system.md) · [rpg-combat](rpg-combat.md) · [economy-progression](economy-progression.md) · [narrative](narrative.md) · [world-outline](world-outline.md) · [act1-campaign](act1-campaign.md) · [event-pool](event-pool.md) · [content-tables](content-tables.md) · [skill-trees](skill-trees.md) · [balance-design](balance-design.md) · [ux-screens](ux-screens.md) · [proposal-dual-board](proposal-dual-board.md) · [round-tempo-system](round-tempo-system.md) · [invasion-combat](invasion-combat.md)
 >
 > **v0.2 결정 반영**: 메인 구조 = **하이브리드(캠페인 + 로그라이트, 공용 메타 성장)**,
 > 톤 = **혼합(명랑+긴장)**.
