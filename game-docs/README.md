@@ -22,8 +22,9 @@
 전체를 한눈에 보려면 **[OVERVIEW (프로젝트 한눈 요약)](OVERVIEW.md)** 부터 — 확정 사항,
 문서별 핵심, 콘텐츠/수치 스냅샷, 통합 미결정 항목을 순서대로 정리했습니다.
 
-▶ **M0 프로토타입(Godot)** 은 [`../game-prototype`](../game-prototype/README.md) 에 있습니다
-(로컬 Godot 4.3+에서 실행).
+▶ **프로토타입(Godot, 로컬 4.3+ 실행)**
+> - **M0**(공유보드 부루마블, 레퍼런스): [`../game-prototype`](../game-prototype/README.md)
+> - **M0.5**(개별보드 파밍→침공, 현 방향): [`../game-prototype-m05`](../game-prototype-m05/README.md)
 
 ## 📂 문서 맵
 

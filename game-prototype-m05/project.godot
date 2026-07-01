@@ -1,0 +1,26 @@
+; Godot 4.x — 다이스마블 M0.5 침공 슬라이스
+; 개별 보드 파밍 → 라운드/티어업 → AI 보드 침공(트랩·수비·코어) 검증용.
+; 로컬 Godot 4.3+ 에서 이 폴더의 project.godot 를 Import 해 실행.
+
+config_version=5
+
+[application]
+
+config/name="다이스마블 M0.5 (침공 슬라이스)"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[autoload]
+
+EventBus="*res://autoload/EventBus.gd"
+RNG="*res://autoload/RNG.gd"
+GameState="*res://autoload/GameState.gd"
+
+[display]
+
+window/size/viewport_width=1152
+window/size/viewport_height=648
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
