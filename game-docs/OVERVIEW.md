@@ -87,9 +87,14 @@
 - ✅ **코드 위치**: 이 repo `game-prototype/` · **Godot 4.3 / GDScript**
 - ✅ **M0 프로토타입 스캐폴딩 완료** → [`../game-prototype`](../game-prototype/README.md)
 
+### ✅ 코어 방향 결정 (사용자)
+- ✅ **개별 보드 + 침공형(S1+A)** 채택 → [proposal-dual-board](02-gdd/proposal-dual-board.md)
+- ✅ **라운드/템포**: 1완주=1라운드(유저별 비동기), 턴당 **파밍 vs 전진** 선택,
+  **3라운드마다 타일 티어업** → [round-tempo-system](02-gdd/round-tempo-system.md)
+- ⏳ "공유 보드 완전 대체" 확정은 **M0.5 침공 슬라이스 재미 게이트** 후
+
 ### 🔴 즉시 결정 필요 (다른 작업 차단)
-- [ ] **코어 방향**: 공유 보드(현행) vs **개별 보드 파밍·전투·방해**(검토중)
-  → 제안서 [proposal-dual-board](02-gdd/proposal-dual-board.md)
+- [ ] **M0.5 침공형 슬라이스** 제작 → 재미 게이트(대체 확정 판단)
 - [ ] **정식 타이틀** 확정(상표·Steam 중복 검색) — 현재 가제 "다이스마블"
 - [ ] **캠페인 vs 로그라이트 콘텐츠 분량 배분**(EA 진입 기준)
 - [ ] **M0 로컬 실행 검증** (Godot 4.3에서 §4 DoD 체크)
