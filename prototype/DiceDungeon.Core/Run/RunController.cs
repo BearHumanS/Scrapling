@@ -53,20 +53,26 @@ namespace DiceDungeon.Core.Run
         bool Descend(int nextFloor, double hpRatio);
         /// <summary>전투 직전 포션 사용 여부.</summary>
         bool UsePotion(double hpRatio, int potions);
+        /// <summary>출발점 통과 시: true = 보스 입장, false = 한 바퀴 더 (위험도 +1) — 심연의 부름 (v7).</summary>
+        bool EnterBoss(int floor, int lapsDone, double hpRatio);
     }
 
-    /// <summary>기본 휴리스틱: HP 여유가 있으면 하강, 위험하면 포션.</summary>
+    /// <summary>기본 휴리스틱: HP 여유가 있으면 하강, 위험하면 포션, 여유 있으면 최대 2바퀴.</summary>
     public sealed class GreedyPolicy : IPlayerPolicy
     {
         private readonly double _descendHpThreshold;
+        private readonly int _maxLaps;
 
-        public GreedyPolicy(double descendHpThreshold = 0.35)
+        public GreedyPolicy(double descendHpThreshold = 0.35, int maxLaps = 2)
         {
             _descendHpThreshold = descendHpThreshold;
+            _maxLaps = maxLaps;
         }
 
         public bool Descend(int nextFloor, double hpRatio) => hpRatio >= _descendHpThreshold;
         public bool UsePotion(double hpRatio, int potions) => potions > 0 && hpRatio < 0.45;
+        public bool EnterBoss(int floor, int lapsDone, double hpRatio)
+            => lapsDone >= _maxLaps || hpRatio < 0.65;
     }
 
     /// <summary>
@@ -156,6 +162,8 @@ namespace DiceDungeon.Core.Run
             var dice = new DiceRoller(_rng.Derive());
             int position = 0;
             int capturedThisFloor = 0;
+            int laps = 0;
+            _extraLaps = 0;
             bool rerollLeft = _character.FloorReroll;
 
             while (true)
@@ -177,22 +185,35 @@ namespace DiceDungeon.Core.Run
                 roll = DiceModRules.Apply(roll, _loadout.ActiveDiceMod, dice, _rng);
 
                 int next = position + roll.Sum;
-                bool lapComplete = next >= Balance.BoardSize;
+                bool passedStart = next >= Balance.BoardSize;
                 position = next % Balance.BoardSize;
 
-                if (lapComplete)
+                if (passedStart)
                 {
-                    // 완주 보너스 → 보스 게이트 (프로토타입: 완주 즉시 보스전)
-                    AddGold((int)(Balance.LapBonusGold(floor) * _config.Mods.LapGoldMult));
+                    // 심연의 부름 (v7): 완주 보너스는 랩마다, 보스 입장은 선택.
+                    // 한 바퀴 더 = 내 땅 회복·파밍 기회, 대신 위험도 +1 (몬스터·보스 강화)
+                    laps++;
+                    AddGold((int)(Balance.LapBonusGold(floor)
+                                  * (1 + Balance.LapRewardMult * _extraLaps)
+                                  * _config.Mods.LapGoldMult));
                     if (_loadout.HasEffect(UniqueEffect.LapFullHeal))
                         _player.Heal(_player.MaxHp); // 전설: 완주 시 전체 회복
-                    return FightBoss(floor, roll, capturedThisFloor);
+
+                    if (_policy.EnterBoss(floor, laps, _player.HpRatio))
+                        return FightBoss(floor, roll, capturedThisFloor);
+
+                    _extraLaps++; // 계속 돈다 — 이후 생성되는 몬스터가 강해진다
                 }
 
                 if (!ResolveTile(tiles[position], floor, roll, ref capturedThisFloor))
                     return false;
             }
         }
+
+        /// <summary>이번 층에서 선택한 추가 랩 수 — 몬스터 위험도 배율의 근거.</summary>
+        private int _extraLaps;
+
+        private double DangerMult => 1 + Balance.LapDangerMult * _extraLaps;
 
         /// <summary>부적 사용 판단 (시뮬레이션 정책 — UI 게임에서는 플레이어 버튼).</summary>
         private DiceResult RollWithCharmPolicy(DiceRoller dice, IReadOnlyList<Tile> tiles, int position, int floor)
@@ -356,8 +377,8 @@ namespace DiceDungeon.Core.Run
 
         private List<Unit> MakeMonsters(int floor, bool elite)
         {
-            int hp = Balance.MonsterHp(floor);
-            int atk = Balance.MonsterAtk(floor);
+            int hp = (int)(Balance.MonsterHp(floor) * DangerMult);
+            int atk = (int)(Balance.MonsterAtk(floor) * DangerMult);
             int def = Balance.MonsterDef(floor);
             var element = ElementTable.FloorElement(floor); // 층 테마 = 방어 속성
             if (elite)
@@ -381,8 +402,8 @@ namespace DiceDungeon.Core.Run
         {
             var boss = new Unit(
                 "Boss",
-                (int)(Balance.MonsterHp(floor) * Balance.BossHpMult),
-                (int)(Balance.MonsterAtk(floor) * Balance.BossAtkMult),
+                (int)(Balance.MonsterHp(floor) * Balance.BossHpMult * DangerMult),
+                (int)(Balance.MonsterAtk(floor) * Balance.BossAtkMult * DangerMult),
                 Balance.MonsterDef(floor), 9)
             {
                 Element = ElementTable.FloorElement(floor),

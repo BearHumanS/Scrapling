@@ -41,6 +41,11 @@ namespace DiceDungeon.Core.Data
         public static int MonsterXp(int floor) => 5 + floor * 3;
         public const int BossXpMult = 5;
 
+        // 심연의 부름 (v7): 보스 게이트는 선택 — 추가 랩마다 위험도·보상 상승
+        // (첫 바퀴 완주 후 출발점 통과 시 [보스 입장 / 한 바퀴 더] 선택)
+        public const double LapDangerMult = 0.28;  // 추가 랩당 몬스터 HP·공격 배율
+        public const double LapRewardMult = 0.25;  // 추가 랩당 랩 보너스 골드 배율
+
         // 타일 생성 비율 (01-게임기획서 4.1)
         public const double TileBattleRatio = 0.50;
         public const double TileEliteRatio = 0.08;

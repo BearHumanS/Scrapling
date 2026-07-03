@@ -22,6 +22,7 @@ if (args.Contains("selftest")) { SelfTest.RunAll(); return; }
 if (args.Contains("meta")) { Simulation.MetaProgression(); return; }
 if (args.Contains("chars")) { Simulation.CharacterCompare(); return; }
 if (args.Contains("jobs")) { Simulation.JobCompare(); return; }
+if (args.Contains("laps")) { Simulation.LapCompare(); return; }
 if (args.Contains("economy")) { Simulation.Economy(); return; }
 Simulation.Baseline(runs: 1000);
 
@@ -67,6 +68,28 @@ static class Simulation
                     $"| {results.Count(r => r.DeathFloor > 0) * 100.0 / results.Count,5:F1}%");
             }
         }
+    }
+
+    /// <summary>
+    /// 심연의 부름 검증: 랩 전략별 성과 — 어느 한쪽이 항상 이득이면 위험도 재조정 필요.
+    /// </summary>
+    public static void LapCompare()
+    {
+        Console.WriteLine("=== 랩 전략 비교 (1,000런/전략, 기사, 메타 0) ===\n");
+        Console.WriteLine("최대 랩 | 평균층 | 평균 소울스톤 | 평균 골드 | 평균 레벨업 킬");
+        Console.WriteLine("--------|--------|--------------|-----------|---------------");
+        for (int maxLaps = 1; maxLaps <= 4; maxLaps++)
+        {
+            var results = new List<RunResult>();
+            for (int i = 0; i < 1000; i++)
+                results.Add(new RunController(4200 + i, new RunConfig(),
+                    new GreedyPolicy(maxLaps: maxLaps)).Play());
+            Console.WriteLine($"{maxLaps,7} | {results.Average(r => r.FloorsCleared),6:F2} " +
+                $"| {results.Average(r => r.Soulstones),12:F0} " +
+                $"| {results.Average(r => r.Gold),9:F0} " +
+                $"| {results.Average(r => r.MonstersKilled),13:F1}");
+        }
+        Console.WriteLine("\n(기대: 어느 전략도 압도적이지 않아야 함 — 층수↔재화의 트레이드오프)");
     }
 
     /// <summary>훈련소 성장 단계별 도달 층 → 벽(Wall) 위치와 성장 체감 검증.</summary>
