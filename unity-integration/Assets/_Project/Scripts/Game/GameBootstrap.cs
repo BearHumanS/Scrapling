@@ -21,6 +21,9 @@ namespace DiceDungeon.Game
 
             _game = gameObject.AddComponent<GameManager>();
             BuildRunPanel(root);
+            var battleView = gameObject.AddComponent<BattleView>();
+            battleView.Build(root); // RunPanel 위에 겹치는 오버레이
+            _game.BattleUi = battleView;
             BuildTownPanel(root);
             BuildChoicePanel(root);
             BuildResultPanel(root);

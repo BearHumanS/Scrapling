@@ -23,6 +23,7 @@ namespace DiceDungeon.Game
     {
         // Bootstrap이 배선
         public BoardView Board;
+        public BattleView BattleUi;
         public Text FloorText, GoldText, SoulText, HpText, DiceText, LogText;
         public Image HpFill;
         public Button RollButton;
@@ -238,13 +239,6 @@ namespace DiceDungeon.Game
 
         private IEnumerator BattleRoutine(List<Unit> monsters, DiceResult roll, bool isBoss)
         {
-            if (_potions > 0 && _player.HpRatio < 0.45)
-            {
-                _potions--;
-                _player.HealRatio(Balance.PotionHealRatio);
-                Log("포션을 마셨다");
-            }
-
             var options = new BattleOptions
             {
                 CritBonus = roll.IsLuckySeven ? 0.15 : 0,
@@ -256,17 +250,18 @@ namespace DiceDungeon.Game
                 Evasion = _character.Evasion,
             };
 
-            int hpBefore = _player.Hp;
-            var result = BattleSimulator.Fight(_player, monsters, _rng.Derive(), options);
-            _monstersKilled += result.MonstersKilled;
-            if (result.ReviveUsed) { _reviveLeft = false; Log("빛이 감싸며 부활했다!"); }
+            // 수동 전투 (Week 3): InteractiveBattle이 판정, BattleView가 입력·연출
+            string intro = roll.IsDouble ? "더블! 선제공격 기회"
+                         : roll.IsLuckySeven ? "럭키세븐! 크리티컬 +15%" : "적이 나타났다";
+            var battle = new InteractiveBattle(_player, monsters, _rng.Derive(), options, _potions);
+            yield return BattleUi.RunBattle(battle, isBoss, intro);
 
-            // 결과 재생 (Week 3에서 수동 입력으로 교체 예정)
-            string name = isBoss ? "보스" : "몬스터";
-            Log($"{name}과 전투! ({result.Rounds}라운드, HP {hpBefore}→{_player.Hp})");
-            yield return LerpHpBar(hpBefore, _player.Hp);
+            _potions = battle.Potions;
+            _monstersKilled += battle.MonstersKilled;
+            if (battle.ReviveUsed) { _reviveLeft = false; Log("빛이 감싸며 부활했다!"); }
+            RefreshHud();
 
-            if (!result.PlayerWon)
+            if (!battle.PlayerWon)
                 yield return EndRunRoutine(died: true);
         }
 
@@ -389,17 +384,6 @@ namespace DiceDungeon.Game
                 (int)(Balance.MonsterAtk(_floor) * Balance.BossAtkMult),
                 Balance.MonsterDef(_floor), 9)
         };
-
-        private IEnumerator LerpHpBar(int from, int to)
-        {
-            for (float t = 0; t < 1f; t += Time.deltaTime / 0.4f)
-            {
-                float hp = Mathf.Lerp(from, to, t);
-                UiFactory.SetRatio(HpFill, hp / _player.MaxHp);
-                yield return null;
-            }
-            RefreshHud();
-        }
 
         private void RefreshHud()
         {

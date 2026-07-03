@@ -235,6 +235,53 @@ static class SelfTest
             return ok;
         });
 
+        Check("수동 전투: 공격만으로 1층 몬스터 격파, 이벤트 순서 정상", () =>
+        {
+            for (int seed = 0; seed < 50; seed++)
+            {
+                var c = CharacterClass.Knight;
+                var player = new Unit(c.Name, c.Hp, c.Atk, c.Def, c.Spd, c.CritChance);
+                var mobs = new List<Unit> { new Unit("M", Balance.MonsterHp(1), Balance.MonsterAtk(1), Balance.MonsterDef(1), 8) };
+                var battle = new InteractiveBattle(player, mobs, new Rng(seed),
+                    new BattleOptions { Skills = c.Skills.Select(s => s.Instance()).ToList() }, potions: 2);
+                int guard = 0;
+                while (!battle.Over && guard++ < 60)
+                    battle.DoRound(PlayerActionType.Attack);
+                if (!battle.PlayerWon) return false;
+            }
+            return true;
+        });
+
+        Check("수동 전투: 방어는 받는 피해를 절반으로", () =>
+        {
+            int TakeHit(bool defend)
+            {
+                var player = new Unit("P", 1000, 1, 100, 1, 0); // 못 죽이는 탱커
+                var mob = new List<Unit> { new Unit("M", 10000, 50, 0, 9) };
+                var b = new InteractiveBattle(player, mob, new Rng(11), new BattleOptions(), 0);
+                b.DoRound(defend ? PlayerActionType.Defend : PlayerActionType.Attack);
+                return 1000 - player.Hp;
+            }
+            int normal = TakeHit(false), defended = TakeHit(true);
+            return defended > 0 && defended <= normal / 2 + 1;
+        });
+
+        Check("수동 전투: 스킬 쿨다운 동작 (사용 직후 비활성 → 회복)", () =>
+        {
+            var c = CharacterClass.Mage;
+            var player = new Unit(c.Name, 10000, c.Atk, c.Def, c.Spd, 0);
+            var mobs = new List<Unit> { new Unit("M", 100000, 1, 0, 8) };
+            var b = new InteractiveBattle(player, mobs, new Rng(5),
+                new BattleOptions { Skills = c.Skills.Select(s => s.Instance()).ToList() }, 0);
+            if (!b.CanUseSkill(0)) return false;
+            b.DoRound(PlayerActionType.Skill, 0);          // 화염구 (쿨 3)
+            if (b.CanUseSkill(0)) return false;            // 쿨다운 중
+            b.DoRound(PlayerActionType.Attack);
+            b.DoRound(PlayerActionType.Attack);
+            b.DoRound(PlayerActionType.Attack);
+            return b.CanUseSkill(0);                       // 3라운드 후 회복
+        });
+
         Check("사망 시 소울스톤 페널티 적용", () =>
         {
             var died = Enumerable.Range(0, 2000)
