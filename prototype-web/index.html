@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>다이스 던전 — 프로토타입 v4</title>
+<title>다이스 던전 — 프로토타입 v5</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html,body { height:100%; }
@@ -356,6 +356,41 @@ button:disabled { opacity:.4; cursor:default; }
   background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703;
 }
 
+/* ===== v5: 소모품 / 이벤트 / 장비 ===== */
+.consumBar { display:flex; gap:7px; }
+.consum-btn {
+  position:relative; flex:1; min-height:46px; border-radius:12px; font-size:13px; font-weight:800;
+  background:linear-gradient(180deg,#2e2a45,#221e38); border:1px solid #453c6e; color:#d8d2ee;
+}
+.consum-btn small { display:block; font-size:9px; font-weight:600; color:#9a92b5; }
+.consum-btn .c-badge {
+  position:absolute; top:-6px; right:-5px; min-width:19px; height:19px; border-radius:10px;
+  background:#5c9ee0; color:#fff; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; padding:0 4px;
+}
+.consum-btn.armed { border-color:#ffd76a; box-shadow:0 0 10px rgba(255,215,106,.45); color:#ffd76a; }
+.consum-btn:not(:disabled):active { transform:scale(.96); }
+.bt-consum { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:7px; }
+.bt-consum button {
+  min-height:44px; border-radius:11px; font-size:12.5px; font-weight:800; line-height:1.25;
+  background:linear-gradient(180deg,#4a3b28,#372c1c); border:1px solid #8a6d2f; color:#f5dfae;
+}
+.bt-consum button small { display:block; font-size:9px; font-weight:600; opacity:.8; }
+.bt-consum button:not(:disabled):active { transform:scale(.96); }
+.ev-choice {
+  display:block; width:100%; text-align:left; margin-top:8px; padding:10px 13px;
+  min-height:52px; border-radius:13px; font-size:14px; font-weight:800;
+  background:linear-gradient(180deg,#2b2348,#1e1934); border:1px solid #4c3f80;
+}
+.ev-choice small { display:block; font-size:11px; font-weight:600; color:#9a92b5; margin-top:2px; }
+.ev-choice:not(:disabled):active { transform:scale(.98); }
+.ev-chance.hi { color:#7ee787; } .ev-chance.mid { color:#ffd76a; } .ev-chance.lo { color:#ff8a7a; }
+.ev-result { font-size:16px; font-weight:800; margin:10px 0 2px; }
+.ev-result.ok { color:#7ee787; } .ev-result.bad { color:#ff8a7a; }
+.rar0 { color:#b9bec6; } .rar1 { color:#7ee787; } .rar2 { color:#6ab7ff; }
+.rar3 { color:#c792ea; } .rar4 { color:#ffa657; }
+.chip.trait { background:rgba(255,215,106,.12); border-color:rgba(255,215,106,.4); color:#ffe9a0; }
+
 /* 플로팅 텍스트 */
 #floats { position:absolute; inset:0; z-index:70; pointer-events:none; overflow:hidden; }
 .float {
@@ -385,7 +420,7 @@ button:disabled { opacity:.4; cursor:default; }
   <div id="screen-town" class="screen">
     <div class="town-title">
       <h1>🎲 다이스 던전</h1>
-      <p>보드 × 로그라이트 던전 RPG — 심화 시스템 프로토타입 v4</p>
+      <p>보드 × 로그라이트 던전 RPG — 깊이 패치 프로토타입 v5</p>
     </div>
     <div class="panel soul-panel">💠 소울스톤 <span class="num" id="townSoul">0</span></div>
     <div class="section-label">🧝 캐릭터 선택 (해금 💠300)</div>
@@ -417,6 +452,11 @@ button:disabled { opacity:.4; cursor:default; }
       <div id="board"></div>
     </div>
     <div id="logPanel"></div>
+    <div class="consumBar">
+      <button class="consum-btn" id="btnCharm" onclick="tapCharm()">🔮 부적<small id="charmSub">홀/짝 강제</small><span class="c-badge" id="cntCharm">0</span></button>
+      <button class="consum-btn" id="btnBomb" disabled>💣 폭탄<small>전투 중 사용</small><span class="c-badge" id="cntBomb">0</span></button>
+      <button class="consum-btn" id="btnSmoke" disabled>🌫️ 연막탄<small>전투 중 사용</small><span class="c-badge" id="cntSmoke">0</span></button>
+    </div>
     <div class="bottomBar">
       <button id="btnFieldPotion" onclick="useFieldPotion()">🧪 ×2</button>
       <button id="btnTree" onclick="openTreeFromBar()">📖<br><small style="font-size:9px">스킬</small><span class="pt-badge" id="treeBadge" style="display:none">0</span></button>
@@ -466,9 +506,7 @@ const B = {
   treasureGold: f => 20 + f * 10,
   lapBonusGold: f => 40 + f * 15,
 
-  gearAtk: f => 2 + Math.floor(f / 2),
-  gearDef: f => 1 + Math.floor(f / 4),
-  gearHp:  f => 10 + f * 3,
+  gearSalePrice: f => 10 + f * 4, // 하위 장비 자동 매각가 (장비 v2)
 
   potionPrice: f => 30 + f * 10,
   gearPrice:   f => 60 + f * 25,
@@ -582,6 +620,214 @@ function tickStatuses(unit) {
     if (unit.st[k].dur <= 0) delete unit.st[k];
   }
   return { damage, skip };
+}
+/* 인화 콤보 (StatusEffects.TryDetonateBurn): 화상 5중첩 → 중첩×6 즉발 + 화상 제거 */
+function tryDetonateBurn(unit) {
+  if (!unit.st.burn || unit.st.burn.stacks < 5) return 0;
+  const dmg = unit.st.burn.stacks * 6;
+  delete unit.st.burn;
+  return dmg;
+}
+
+/* ----- Consumables.cs: 소모품 3종 (깊이 v5) — "운을 조작하는" 코어 차별 요소 ----- */
+const CONSUM = {
+  charm: { icon:'🔮', n:'홀짝 부적', d:'이번 굴림의 합을 홀/짝으로 강제', price: f => 25 + f * 8 },
+  bomb:  { icon:'💣', n:'폭탄',      d:'전투 중 적 전체 고정 피해',       price: f => 30 + f * 10 },
+  smoke: { icon:'🌫️', n:'연막탄',    d:'전투 1회 회피 (보상·점령 없음)',  price: f => 20 + f * 6 }
+};
+const CONSUM_KEYS = ['charm', 'bomb', 'smoke'];
+const bombDamage = f => 25 + f * 8; // ConsumableBag.BombDamage
+
+/* ----- Traits.cs: 몬스터 개성 5종 (깊이 v5) — "누굴 먼저 잡지?" ----- */
+const TRAITS = {
+  healer:    { n:'치유사', icon:'💚', d:'동료 HP 60%↓면 공격 대신 12% 회복' },
+  enrage:    { n:'광폭',   icon:'😡', d:'HP 50%↓에서 공격 ×1.4' },
+  shielded:  { n:'장갑',   icon:'🛡', d:'첫 2회 피격 피해 절반' },
+  venomous:  { n:'맹독',   icon:'🧪', d:'공격마다 플레이어 중독' },
+  explosive: { n:'폭발',   icon:'💥', d:'사망 시 공격력 ×1.5 피해' }
+};
+const TRAIT_KEYS = ['healer', 'enrage', 'shielded', 'venomous', 'explosive'];
+const TRAIT_MIN_FLOOR = 3, TRAIT_CHANCE = 0.35;
+function rollTrait(floor) {
+  if (floor < TRAIT_MIN_FLOOR || !chance(TRAIT_CHANCE)) return null;
+  return TRAIT_KEYS[randInt(0, TRAIT_KEYS.length)];
+}
+
+/* ----- Events.cs: 이벤트 8종 × 선택지 × 스탯 판정 (깊이 v5) -----
+ * 판정 확률 = 50% ± (스탯-난이도)×4.5%p, 25~95% 클램프 */
+function evSuccessChance(choice, stats) {
+  if (!choice.check) return 1.0;
+  return Math.max(0.25, Math.min(0.95, 0.5 + 0.045 * (stats[choice.check] - choice.dc)));
+}
+const EV_STAT_NAMES = { str:'힘', agi:'민첩', vit:'체력', int:'지능', dex:'재주', luk:'운' };
+function buildEvents(floor) {
+  const g = 20 + floor * 10; // 층 비례 골드 기준값
+  return [
+    { name:'무너진 제단', icon:'⛩️', choices:[
+      { desc:'기도한다', check:'luk', dc:8,
+        success:{ hpRatio:0.30, gold:Math.trunc(g / 2) }, fail:{ hpRatio:-0.15 } },
+      { desc:'지나친다' }
+    ]},
+    { name:'잠긴 보물상자', icon:'🧰', choices:[
+      { desc:'자물쇠를 딴다', check:'dex', dc:9, success:{ gear:true }, fail:{ hpRatio:-0.12 } },
+      { desc:'부순다', check:'str', dc:10, success:{ gold:g }, fail:{ hpRatio:-0.06 } },
+      { desc:'내버려둔다' }
+    ]},
+    { name:'떠도는 상인', icon:'🧳', choices:[
+      { desc:'부적을 산다 (-' + g + 'G)', success:{ gold:-g, item:'charm' } },
+      { desc:'지나친다' }
+    ]},
+    { name:'수상한 고기', icon:'🍖', choices:[
+      { desc:'먹는다', check:'vit', dc:9, success:{ hpRatio:0.40 }, fail:{ hpRatio:-0.10 } },
+      { desc:'버린다' }
+    ]},
+    { name:'고대 서고', icon:'📚', choices:[
+      { desc:'해독한다', check:'int', dc:9, success:{ xp:15 + floor * 5 }, fail:{} },
+      { desc:'태워서 몸을 녹인다', success:{ hpRatio:0.10 } }
+    ]},
+    { name:'해골 도박사', icon:'💀', choices:[
+      { desc:g + 'G를 건다', check:'luk', dc:10, success:{ gold:g * 2 }, fail:{ gold:-g } },
+      { desc:'거절한다' }
+    ]},
+    { name:'갇힌 모험가', icon:'🪨', choices:[
+      { desc:'잔해를 치운다', check:'str', dc:9,
+        success:{ gold:g, item:'bomb' }, fail:{ hpRatio:-0.10 } },
+      { desc:'못 본 척한다' }
+    ]},
+    { name:'검은 웅덩이', icon:'🕳️', choices:[
+      { desc:'손을 넣는다', check:'luk', dc:11, success:{ gear:true }, fail:{ hpRatio:-0.18 } },
+      { desc:'연막탄 재료만 뜬다', success:{ item:'smoke' } }
+    ]}
+  ];
+}
+/* EventCatalog.PickByExpectedValue — 시뮬레이션(자동 검증) 정책용. 웹 UI는 플레이어가 직접 고른다. */
+function evPickByEV(def, stats, hpRatio, gold) {
+  const utility = o => {
+    if (!o) o = {};
+    if ((o.gold || 0) < 0 && gold < -o.gold) return -Infinity; // 못 사는 선택지
+    let u = (o.gold || 0) * 0.01 + (o.xp || 0) * 0.02 + (o.gear ? 1.2 : 0) + (o.item ? 0.8 : 0);
+    const hr = o.hpRatio || 0;
+    u += hr * (hr < 0 ? (hpRatio < 0.4 ? 6.0 : 2.5) : (hpRatio < 0.6 ? 4.0 : 1.0));
+    return u;
+  };
+  let best = 0, bestEv = -Infinity;
+  def.choices.forEach((c, i) => {
+    const p = evSuccessChance(c, stats);
+    const ev = p * utility(c.success) + (1 - p) * utility(c.fail);
+    if (ev > bestEv) { bestEv = ev; best = i; }
+  });
+  return best;
+}
+
+/* ----- Equipment.cs: 장비 시스템 v2 — 슬롯 4종 × 등급 5단계 × 전설 고유 효과 ----- */
+const RARITIES = [
+  { key:'common',    n:'낡은',   mult:1.0  },
+  { key:'uncommon',  n:'쓸만한', mult:1.35 },
+  { key:'rare',      n:'정교한', mult:1.8  },
+  { key:'epic',      n:'영웅의', mult:2.4  },
+  { key:'legendary', n:'전설의', mult:3.2  }
+];
+const SLOT_KEYS = ['weapon', 'armor', 'accessory', 'dice'];
+const SLOT_INFO = {
+  weapon:    { icon:'🗡️', n:'무기' },
+  armor:     { icon:'🛡️', n:'방어구' },
+  accessory: { icon:'💍', n:'장신구' },
+  dice:      { icon:'🎲', n:'주사위' }
+};
+const DICE_MODS = { // 주사위 장비 효과 — 이동 굴림에 적용 (운을 조작하는 재미의 핵심)
+  noOnes:   { n:'1이 나온 눈을 한 번 다시 굴림' },
+  balanced: { n:'합이 4 이하면 다시 굴림 (1회)' },
+  heavy:    { n:'합 -1 (최소 2)' },
+  lucky:    { n:'합 6·8이면 30% 확률로 7 보정' }
+};
+const UNIQUE_EFFECTS = { // 전설 등급 고유 효과 3종
+  lapFullHeal: { icon:'💖', n:'완주 시 HP 전체 회복' },
+  goldFind:    { icon:'🪙', n:'골드 획득 +25%' },
+  trapWard:    { icon:'🐾', n:'함정 회피 +25%p' }
+};
+/* EquipmentFactory.RollRarity: 층 비례 (전설은 5층부터) */
+function rollRarity(floor) {
+  const v = Math.random();
+  const legendary = floor >= 5 ? 0.02 + floor * 0.004 : 0;
+  const epic = 0.05 + floor * 0.008;
+  const rare = 0.15 + floor * 0.01;
+  if (v < legendary) return 4;
+  if (v < legendary + epic) return 3;
+  if (v < legendary + epic + rare) return 2;
+  if (v < legendary + epic + rare + 0.30) return 1;
+  return 0;
+}
+function rollUniqueEffect() {
+  return ['lapFullHeal', 'goldFind', 'trapWard'][randInt(0, 3)];
+}
+/* EquipmentFactory.Generate */
+function generateEquipment(floor) {
+  const slot = SLOT_KEYS[randInt(0, 4)];
+  const rarity = rollRarity(floor);
+  const rm = RARITIES[rarity].mult;
+  const scale = (1 + 0.22 * (floor - 1)) * rm;
+  const prefix = RARITIES[rarity].n;
+  const effect = rarity === 4 ? rollUniqueEffect() : null;
+  const base = { slot, rarity, atk:0, def:0, hp:0, crit:0, diceMod:null, effect };
+  switch (slot) {
+    case 'weapon':
+      return Object.assign(base, { name:prefix + ' 검', atk:Math.max(1, Math.trunc(3 * scale)) });
+    case 'armor':
+      return Object.assign(base, { name:prefix + ' 갑옷',
+        def:Math.max(1, Math.trunc(2 * scale)), hp:Math.trunc(14 * scale) });
+    case 'accessory':
+      return Object.assign(base, { name:prefix + ' 반지',
+        hp:Math.trunc(8 * scale), crit:0.015 * rm });
+    default: // 주사위: 등급이 오를수록 좋은 조작 효과
+      switch (rarity) {
+        case 0:  return Object.assign(base, { name:prefix + ' 주사위', hp:Math.trunc(5 * scale) });
+        case 1:  return Object.assign(base, { name:'균형 주사위', diceMod:'balanced' });
+        case 2:  return Object.assign(base, { name:'정직한 주사위', diceMod:'noOnes' });
+        case 3:  return Object.assign(base, { name:'무거운 주사위', atk:Math.trunc(4 * scale), diceMod:'heavy' });
+        default: return Object.assign(base, { name:'운명의 주사위', diceMod:'lucky' });
+      }
+  }
+}
+/* Equipment.Score: 자동 교체 비교 점수 */
+const gearScore = e => e.atk * 3 + e.def * 2.5 + e.hp * 0.35 + e.crit * 250
+                      + (e.diceMod ? 8 : 0) + (e.effect ? 15 : 0);
+const gearDisplayName = e =>
+  (e.slot === 'dice' && e.rarity > 0 ? '[' + RARITIES[e.rarity].n + '] ' : '') + e.name;
+function gearStatText(e) {
+  const p = [];
+  if (e.atk) p.push('⚔️+' + e.atk);
+  if (e.def) p.push('🛡️+' + e.def);
+  if (e.hp) p.push('❤️+' + e.hp);
+  if (e.crit) p.push('🎯크리+' + (e.crit * 100).toFixed(1) + '%p');
+  if (e.diceMod) p.push('🎲 ' + DICE_MODS[e.diceMod].n);
+  if (e.effect) p.push(UNIQUE_EFFECTS[e.effect].icon + ' ' + UNIQUE_EFFECTS[e.effect].n);
+  return p.join(' · ') || '—';
+}
+/* DiceModRules.Apply: 주사위 장비 효과 (보드 이동 전 단계) */
+function applyDiceMod(d1, d2, mod) {
+  if (!mod) return null;
+  switch (mod) {
+    case 'noOnes': {
+      if (d1 !== 1 && d2 !== 1) return null;
+      return { d1: d1 === 1 ? randInt(1, 7) : d1, d2: d2 === 1 ? randInt(1, 7) : d2, label:'정직한 주사위' };
+    }
+    case 'balanced':
+      if (d1 + d2 > 4) return null;
+      return { d1: randInt(1, 7), d2: randInt(1, 7), label:'균형 주사위' };
+    case 'heavy': {
+      if (d1 + d2 <= 2) return null;
+      return d1 >= d2
+        ? { d1: Math.max(1, d1 - 1), d2, label:'무거운 주사위' }
+        : { d1, d2: Math.max(1, d2 - 1), label:'무거운 주사위' };
+    }
+    case 'lucky': {
+      const sum = d1 + d2;
+      if ((sum === 6 || sum === 8) && chance(0.3))
+        return { d1, d2: sum === 6 ? d2 + 1 : d2 - 1, label:'운명의 주사위' };
+      return null;
+    }
+    default: return null;
+  }
 }
 
 /* ----- SkillDef.cs: 스킬 정의 (레벨 1~5, 계수/레벨 증가, 패시브 8종) ----- */
@@ -819,7 +1065,7 @@ function newSheet(charId) {
     learned: {},                          // skillId -> level
     points: 1,                            // 시작 스킬 1개
     statPoints: 0,
-    gearAtk: 0, gearDef: 0, gearHp: 0
+    gearAtk: 0, gearDef: 0, gearHp: 0, gearCrit: 0 // EquipmentLoadout.ApplyTo가 기록
   };
 }
 /* 경험치 획득 → 오른 레벨 수 (레벨당 스탯+3, 스킬+1) */
@@ -920,7 +1166,7 @@ function refreshUnit(sheet, unit, bonus) {
   unit.def  = D.def(s)  + sheet.gearDef + bonus.def + Math.trunc(passiveSum(sheet, 'defFlat'));
   unit.mdef = D.mdef(s) + Math.trunc(sheet.gearDef / 2) + Math.trunc(bonus.def / 2);
   unit.spd  = D.spd(s);
-  unit.crit = D.crit(s) + bonus.crit + passiveSum(sheet, 'critPct');
+  unit.crit = D.crit(s) + bonus.crit + (sheet.gearCrit || 0) + passiveSum(sheet, 'critPct');
   unit.evasion  = D.evasion(s) + cls.evasion + passiveSum(sheet, 'evadePct');
   unit.accuracy = D.accuracy(s);
 }
@@ -947,6 +1193,9 @@ function computeDamage(attacker, defender, skill, critBonus) {
   const coef = (skill && skill.coef > 0) ? skill.coef : 1.0;
   const element = skill ? skill.element : 'neutral';
   const mult = elemMult(element, defender.element);
+
+  // 콤보 시너지 (깊이 v5): 빙결된 대상은 크리티컬 +25%p — 스킬 순서에 의미 부여
+  if (defender.st && defender.st.freeze) critBonus += 0.25;
 
   let dmg = atkStat * coef * (100 / (100 + defStat)) * mult;
   const crit = chance(attacker.crit + critBonus);
@@ -1224,6 +1473,9 @@ function startRun() {
     gold: bn.mods.startGold,
     potions: B.START_POTIONS + bn.mods.startPotions,
     kills: 0, gearCount: 0, diceRolls: 0,
+    bag: { charm: 1, bomb: 0, smoke: 0 }, // 첫 런부터 부적 1개 — 조작의 재미를 즉시 경험
+    charmParity: null,                    // 'odd'|'even' — 다음 굴림 강제
+    loadout: { weapon: null, armor: null, accessory: null, dice: null }, // 장비 v2 (슬롯당 1개)
     pos: 0, tiles: [], capturedThisFloor: 0,
     rerollLeft: CHARS[meta.selected].reroll,
     reviveLeft: CHARS[meta.selected].revive,
@@ -1369,6 +1621,16 @@ function updateHUD() {
   $('btnFieldPotion').disabled = busy || run.potions <= 0 || p.hp >= p.maxHp;
   $('btnRoll').disabled = busy;
   $('btnTree').disabled = busy;
+  // v5 소모품 3슬롯 (수량 배지) — 부적은 굴리기 전에 눌러 홀/짝 선택
+  $('cntCharm').textContent = run.bag.charm;
+  $('cntBomb').textContent = run.bag.bomb;
+  $('cntSmoke').textContent = run.bag.smoke;
+  const charmBtn = $('btnCharm');
+  charmBtn.classList.toggle('armed', !!run.charmParity);
+  $('charmSub').textContent = run.charmParity
+    ? (run.charmParity === 'even' ? '짝수 강제! (취소)' : '홀수 강제! (취소)')
+    : '홀/짝 강제';
+  charmBtn.disabled = busy || (!run.charmParity && run.bag.charm <= 0);
   const badge = $('treeBadge');
   const pts = sh.points + sh.statPoints;
   badge.style.display = pts > 0 ? 'flex' : 'none';
@@ -1400,20 +1662,46 @@ function damagePlayerField(dmg, srcLabel) {
   if (p.hp <= 0) { die(); return false; }
   return true;
 }
+/* 전설 고유 효과 보유 확인 (EquipmentLoadout.HasEffect) */
+function hasEffect(eff) {
+  return SLOT_KEYS.some(k => run.loadout[k] && run.loadout[k].effect === eff);
+}
+/* 골드 획득 단일 지점 — 전설 '골드 탐지(+25%)' 적용 (RunController.AddGold) */
 function addGold(g, label) {
+  if (hasEffect('goldFind')) g = Math.trunc(g * 1.25);
   run.gold += g;
   floatText($('token'), '+' + g + ' 💰', 'gold');
   if (label) log('💰 ' + label + ' 골드 +' + g);
   updateHUD();
 }
-function addGear(silent) {
-  const f = run.floor, sh = run.sheet;
-  const a = B.gearAtk(f), d = B.gearDef(f), h = B.gearHp(f);
-  run.gearCount++;
-  sh.gearAtk += a; sh.gearDef += d; sh.gearHp += h;
+/* 장비 합계 → 시트 반영 (EquipmentLoadout.ApplyTo + Refresh) */
+function applyLoadout() {
+  const sh = run.sheet;
+  let a = 0, d = 0, h = 0, c = 0;
+  for (const k of SLOT_KEYS) {
+    const e = run.loadout[k];
+    if (!e) continue;
+    a += e.atk; d += e.def; h += e.hp; c += e.crit;
+  }
+  sh.gearAtk = a; sh.gearDef = d; sh.gearHp = h; sh.gearCrit = c;
   refreshPlayer(); // maxHp 증가분만큼 현재 HP도 증가
-  if (!silent) floatText($('token'), '🗡️ 장비!', 'info');
-  log('🗡️ 장비 획득! ⚔️+' + a + ' 🛡️+' + d + ' ❤️+' + h);
+}
+/* 장비 획득 (장비 v2): 슬롯 4종·등급 5단계, 점수 비교 자동 교체 — 하위품은 매각 */
+function addGear(silent) {
+  run.gearCount++;
+  const item = generateEquipment(run.floor);
+  const cur = run.loadout[item.slot];
+  if (!cur || gearScore(cur) < gearScore(item)) {
+    run.loadout[item.slot] = item;
+    applyLoadout();
+    if (!silent) floatText($('token'), SLOT_INFO[item.slot].icon + ' 장착!', 'info');
+    log(SLOT_INFO[item.slot].icon + ' <span class="rar' + item.rarity + '">' +
+        gearDisplayName(item) + '</span> 장착! (' + gearStatText(item) + ')');
+  } else {
+    log('🗡️ <span class="rar' + item.rarity + '">' + gearDisplayName(item) + '</span>' +
+        ' — 지금 것보다 약해서 매각했다.');
+    addGold(B.gearSalePrice(run.floor));
+  }
   updateHUD();
 }
 function useFieldPotion() {
@@ -1422,6 +1710,44 @@ function useFieldPotion() {
   run.potions--;
   healRatio(B.POTION_HEAL, '포션 사용!');
   updateHUD();
+}
+
+/* ===== v5 소모품: 홀짝 부적 — 굴리기 전에 눌러 홀/짝 선택 → 이번 굴림 강제 ===== */
+function tapCharm() {
+  if (busy || !run || !run.alive || uiMode !== 'idle') return;
+  if (run.charmParity) { // 재탭 = 취소 (환불)
+    run.bag.charm++;
+    run.charmParity = null;
+    log('🔮 부적 사용을 취소했다.');
+    updateHUD();
+    return;
+  }
+  if (run.bag.charm <= 0) return;
+  uiMode = 'charm';
+  setBusy(true);
+  overlay(
+    '<div class="m-title">🔮 홀짝 부적</div>' +
+    '<div class="m-sub">이번 굴림의 합을 원하는 홀짝으로 강제한다 (보유 ' + run.bag.charm + '개)<br>' +
+      '"6칸 앞 쉼터에 가고 싶다 → 짝수 부적"</div>' +
+    '<button class="m-btn" onclick="charmPick(\'odd\')">홀수로 강제 (3·5·7·9·11)</button>' +
+    '<button class="m-btn" onclick="charmPick(\'even\')">짝수로 강제 (2·4·6·8·10·12)</button>' +
+    '<button class="m-btn dark" onclick="charmCancel()">취소</button>'
+  );
+}
+function charmPick(parity) {
+  if (!run || run.charmParity || run.bag.charm <= 0) return;
+  if (uiMode !== 'charm' && uiMode !== 'idle') return;
+  run.bag.charm--;
+  run.charmParity = parity;
+  if (uiMode === 'charm') { closeOverlay(); uiMode = 'idle'; }
+  log('🔮 홀짝 부적! 이번 굴림은 <b>' + (parity === 'even' ? '짝수' : '홀수') + '</b>로 강제된다.');
+  setBusy(false);
+}
+function charmCancel() {
+  if (uiMode !== 'charm') return;
+  closeOverlay();
+  uiMode = 'idle';
+  setBusy(false);
 }
 
 /* =====================================================================
@@ -1443,6 +1769,14 @@ function rollDice() {
   setTimeout(() => {
     clearInterval(tick);
     let d1 = randInt(1, 7), d2 = randInt(1, 7);
+    // 홀짝 부적: 원하는 홀짝이 나올 때까지 리롤 (DiceRoller.RollWithParity)
+    let charmUsed = null;
+    if (run.charmParity) {
+      const wantEven = run.charmParity === 'even';
+      while (((d1 + d2) % 2 === 0) !== wantEven) { d1 = randInt(1, 7); d2 = randInt(1, 7); }
+      charmUsed = run.charmParity;
+      run.charmParity = null;
+    }
     run.diceRolls++;
     let rerolled = false;
     // 도적 패시브: 층당 1회, 낮은 눈(합≤4)이면 무료 리롤 (RunController.PlayFloor)
@@ -1452,6 +1786,12 @@ function rollDice() {
       d1 = randInt(1, 7); d2 = randInt(1, 7);
       run.diceRolls++;
     }
+    // 주사위 장비 효과 (DiceModRules.Apply — 이동 굴림 조작, RunController.PlayFloor와 동일 순서)
+    let modLabel = null;
+    if (run.loadout.dice && run.loadout.dice.diceMod) {
+      const dm = applyDiceMod(d1, d2, run.loadout.dice.diceMod);
+      if (dm) { d1 = dm.d1; d2 = dm.d2; modLabel = dm.label; }
+    }
     const info = { d1, d2, sum: d1 + d2, isDouble: d1 === d2, isSeven: d1 + d2 === 7 };
     d1El.classList.remove('rolling'); d2El.classList.remove('rolling');
     d1El.textContent = d1; d2El.textContent = d2;
@@ -1459,12 +1799,15 @@ function rollDice() {
     setTimeout(() => { d1El.classList.remove('landed'); d2El.classList.remove('landed'); }, 320);
 
     let badges = '';
+    if (charmUsed) badges += '<div class="badge">🔮 부적 — ' + (charmUsed === 'even' ? '짝수' : '홀수') + ' 강제!</div>';
     if (rerolled) badges += '<div class="badge">🥷 도적의 리롤!</div>';
+    if (modLabel) badges += '<div class="badge">🎲 ' + modLabel + '!</div>';
     if (info.isDouble) badges += '<div class="badge">✨ 더블! 선제공격</div>';
     if (info.isSeven)  badges += '<div class="badge">🍀 럭키 7! 크리티컬 +15%</div>';
     $('bcBadges').innerHTML = badges;
     log('🎲 주사위: ' + d1 + ' + ' + d2 + ' = ' + info.sum +
-        (rerolled ? ' (리롤)' : '') + (info.isDouble ? ' (더블!)' : '') + (info.isSeven ? ' (럭키 7!)' : ''));
+        (charmUsed ? ' (부적)' : '') + (rerolled ? ' (리롤)' : '') + (modLabel ? ' (' + modLabel + ')' : '') +
+        (info.isDouble ? ' (더블!)' : '') + (info.isSeven ? ' (럭키 7!)' : ''));
 
     setTimeout(() => moveSteps(info), 380);
   }, T.DICE);
@@ -1488,6 +1831,9 @@ function land(lapComplete, info) {
   if (lapComplete) {
     const g = Math.trunc(B.lapBonusGold(run.floor) * run.mods.lapGoldMult);
     addGold(g, '한 바퀴 완주!');
+    if (hasEffect('lapFullHeal')) { // 전설 고유 효과: 완주 시 HP 전체 회복
+      healRatio(1.0, '💖 전설 효과 — 완주 회복!');
+    }
     log('👑 보스 게이트가 열렸다...');
     setTimeout(() => startBossBattle(info), 850);
     return;
@@ -1521,6 +1867,7 @@ function resolveTile(info) {
         monsters: makeMonsters(f, elite),
         info: info,
         title: elite ? '☠️ 정예 전투!' : '⚔️ 전투!',
+        isElite: elite,
         onWin: () => {
           tile.captured = true;
           run.capturedThisFloor++;
@@ -1546,8 +1893,16 @@ function resolveTile(info) {
         });
         return;
       }
-      if (chance(0.5)) addGear();
-      else addGold(B.treasureGold(f), '보물 상자!');
+      // v5: 장비 40% / 골드 35% / 소모품 25% (RunController.ResolveTile Treasure)
+      const v2 = Math.random();
+      if (v2 < 0.40) addGear();
+      else if (v2 < 0.75) addGold(B.treasureGold(f), '보물 상자!');
+      else {
+        const k = CONSUM_KEYS[randInt(0, 3)];
+        run.bag[k]++;
+        floatText($('token'), CONSUM[k].icon + ' ' + CONSUM[k].n + '!', 'info');
+        log(CONSUM[k].icon + ' 보물 상자에서 <b>' + CONSUM[k].n + '</b>을(를) 얻었다!');
+      }
       endTurn();
       return;
     }
@@ -1564,7 +1919,8 @@ function resolveTile(info) {
     }
 
     case 'trap': {
-      if (chance(B.TRAP_AVOID + run.mods.trapAvoidBonus)) {
+      // 함정 회피 = 기본 30% + 유물 + 전설 '함정 감지' 25%p
+      if (chance(B.TRAP_AVOID + run.mods.trapAvoidBonus + (hasEffect('trapWard') ? 0.25 : 0))) {
         log('🤸 함정을 재빠르게 회피했다!');
         floatText($('token'), '회피!', 'info');
         endTurn();
@@ -1585,49 +1941,131 @@ function resolveTile(info) {
   }
 }
 
-/* ===== 이벤트 칸 (마법사: 나쁜 결과 1회 리롤) ===== */
-let eventApply = null;
+/* ===== 이벤트 칸 (깊이 v5): 8종 × 선택지 × 스탯 판정 — 플레이어가 직접 고른다 =====
+ * 판정 = 50% ± (스탯-난이도)×4.5%p (25~95% 클램프). 마법사 패시브 = 실패 판정 1회 재굴림 */
+let curEvent = null;   // { def, phase:'choose'|'result' }
 function openEvent() {
-  const f = run.floor;
-  let v = Math.random();
-  let mageRerolled = false;
-  if (CHARS[run.charId].bestEvent && v >= 0.40 && v < 0.75) {
-    v = Math.random();
-    mageRerolled = true;
-  }
-  let text;
-  if (v < 0.40) {
-    const g = B.treasureGold(f);
-    text = '무너진 제단 아래에서 금화 주머니를 발견했다!<br><b style="color:#ffd76a">💰 골드 +' + g + '</b>';
-    eventApply = () => { addGold(g, '이벤트:'); endTurn(); };
-  } else if (v < 0.75) {
-    const dmg = Math.floor(run.player.maxHp * 0.08);
-    text = '어둠 속에서 무언가가 스치고 지나갔다...<br><b style="color:#ff6a5e">💢 피해 -' + dmg + '</b>';
-    eventApply = () => { if (damagePlayerField(dmg, '불길한 기운!')) endTurn(); };
-  } else {
-    text = '떠돌이 대장장이가 낡은 장비를 건네주었다!<br><b style="color:#b8aef5">🗡️ 장비 획득</b>';
-    eventApply = () => { addGear(); endTurn(); };
-  }
+  const all = buildEvents(run.floor);
+  curEvent = { def: all[randInt(0, all.length)], phase: 'choose' };
   uiMode = 'event';
+  renderEventChoices();
+}
+function renderEventChoices() {
+  const def = curEvent.def, stats = run.sheet.stats;
+  const chanceCls = p => p >= 0.65 ? 'hi' : p >= 0.45 ? 'mid' : 'lo';
+  const outcomeHint = o => {
+    if (!o) return '변화 없음';
+    const p = [];
+    if (o.gold > 0) p.push('💰+' + o.gold); else if (o.gold < 0) p.push('💰' + o.gold);
+    if (o.hpRatio > 0) p.push('❤️+' + Math.round(o.hpRatio * 100) + '%');
+    else if (o.hpRatio < 0) p.push('💢-' + Math.round(-o.hpRatio * 100) + '%');
+    if (o.gear) p.push('🗡️장비');
+    if (o.item) p.push(CONSUM[o.item].icon + CONSUM[o.item].n);
+    if (o.xp) p.push('✨XP+' + o.xp);
+    return p.length ? p.join(' ') : '변화 없음';
+  };
   overlay(
-    '<div class="m-title">❓ 이벤트</div>' +
-    '<div class="m-sub">' + themeOf(f).name + ' ' + f + '층' +
-      (mageRerolled ? ' — 🧙 마법사의 통찰로 다시 선택!' : '') + '</div>' +
-    '<p style="font-size:14.5px;line-height:1.8;margin:10px 0 4px">' + text + '</p>' +
-    '<button class="m-btn" onclick="eventOk()">확인</button>'
+    '<div class="m-title">' + def.icon + ' ' + def.name + '</div>' +
+    '<div class="m-sub">' + themeOf(run.floor).name + ' ' + run.floor + '층 — 어떻게 할까?' +
+      (CHARS[run.charId].bestEvent ? '<br>🧙 마법사 패시브: 실패한 판정을 1회 다시 굴린다' : '') + '</div>' +
+    def.choices.map((c, i) => {
+      const p = evSuccessChance(c, stats);
+      const cost = c.success && c.success.gold < 0 ? -c.success.gold : 0;
+      const afford = cost <= run.gold;
+      let sub;
+      if (c.check) {
+        sub = STAT_INFO[c.check].icon + ' ' + EV_STAT_NAMES[c.check] + ' 판정 — 성공 ' +
+          '<span class="ev-chance ' + chanceCls(p) + '">' + Math.round(p * 100) + '%</span>' +
+          ' · 성공: ' + outcomeHint(c.success) + ' / 실패: ' + outcomeHint(c.fail);
+      } else if (c.success) {
+        sub = outcomeHint(c.success);
+      } else {
+        sub = '아무 일도 일어나지 않는다';
+      }
+      return '<button class="ev-choice" onclick="evChoice(' + i + ')"' + (afford ? '' : ' disabled') + '>' +
+        c.desc + (c.check ? ' <span style="color:#8fd0ff">(' + EV_STAT_NAMES[c.check] + ' ' + stats[c.check] + ')</span>' : '') +
+        '<small>' + sub + '</small></button>';
+    }).join('')
   );
 }
-function eventOk() {
+function evChoice(i) {
+  if (!curEvent || curEvent.phase !== 'choose') return;
+  const c = curEvent.def.choices[i];
+  const cost = c.success && c.success.gold < 0 ? -c.success.gold : 0;
+  if (cost > run.gold) return;
+
+  let success = true, mageReroll = false, p = 1;
+  if (c.check) {
+    p = evSuccessChance(c, run.sheet.stats);
+    success = chance(p);
+    // 마법사 패시브 (깊이 v5 재정의): 실패한 판정을 한 번 다시 굴림
+    if (!success && CHARS[run.charId].bestEvent) {
+      mageReroll = true;
+      success = chance(p);
+    }
+  }
+  curEvent.phase = 'result';
+  curEvent.outcome = (success ? c.success : c.fail) || {};
+  const o = curEvent.outcome;
+  const lines = [];
+  if (o.gold > 0) lines.push('💰 골드 +' + o.gold);
+  else if (o.gold < 0) lines.push('💰 골드 ' + o.gold);
+  if (o.hpRatio > 0) lines.push('❤️ HP ' + Math.round(o.hpRatio * 100) + '% 회복');
+  else if (o.hpRatio < 0) lines.push('💢 최대 HP의 ' + Math.round(-o.hpRatio * 100) + '% 피해');
+  if (o.gear) lines.push('🗡️ 장비 획득');
+  if (o.item) lines.push(CONSUM[o.item].icon + ' ' + CONSUM[o.item].n + ' 획득');
+  if (o.xp) lines.push('✨ 경험치 +' + o.xp);
+  overlay(
+    '<div class="m-title">' + curEvent.def.icon + ' ' + curEvent.def.name + '</div>' +
+    '<div class="m-sub">' + c.desc + (c.check ? ' — ' + EV_STAT_NAMES[c.check] + ' 판정 ' + Math.round(p * 100) + '%' : '') + '</div>' +
+    (c.check
+      ? '<div class="ev-result ' + (success ? 'ok' : 'bad') + '">' +
+          (success ? '✅ 판정 성공!' : '❌ 판정 실패...') +
+          (mageReroll ? '<br><span style="font-size:12px;color:#b8aef5">🧙 마법사의 재굴림' +
+            (success ? '으로 뒤집었다!' : '도 실패했다...') + '</span>' : '') + '</div>'
+      : '') +
+    '<p style="font-size:14.5px;line-height:1.9;margin:8px 0 4px">' +
+      (lines.length ? lines.join('<br>') : '아무 일도 일어나지 않았다.') + '</p>' +
+    '<button class="m-btn" onclick="evResultOk()">확인</button>'
+  );
+  if (c.check) log(success ? '✅ ' + curEvent.def.name + ' — 판정 성공!' : '❌ ' + curEvent.def.name + ' — 판정 실패...');
+}
+function evResultOk() {
+  if (!curEvent || curEvent.phase !== 'result') return;
+  const o = curEvent.outcome;
+  curEvent = null;
   closeOverlay();
-  const fn = eventApply;
-  eventApply = null;
-  if (fn) fn();
+  // RunController.ApplyOutcome 순서: 골드 → HP → 장비 → 아이템 → XP
+  if (o.gold > 0) addGold(o.gold, '이벤트:');
+  else if (o.gold < 0) { run.gold = Math.max(0, run.gold + o.gold); updateHUD(); }
+  let dead = false;
+  if (o.hpRatio > 0) healRatio(o.hpRatio, '이벤트:');
+  else if (o.hpRatio < 0) dead = !damagePlayerField(Math.trunc(run.player.maxHp * -o.hpRatio), '이벤트!');
+  if (o.gear) addGear();
+  if (o.item) {
+    run.bag[o.item]++;
+    log(CONSUM[o.item].icon + ' <b>' + CONSUM[o.item].n + '</b>을(를) 얻었다!');
+    updateHUD();
+  }
+  if (dead) return; // die()가 이미 처리
+  if (o.xp) {
+    floatText($('token'), '+' + o.xp + ' XP', 'xp');
+    const gained = gainXp(run.sheet, o.xp);
+    log('✨ 경험치 +' + o.xp + (gained > 0 ? ' — 레벨 업!' : ''));
+    updateHUD();
+    if (gained > 0) { processProgression(() => endTurn()); return; }
+  }
+  endTurn();
 }
 
 /* ===== 상점 (상인의 인장: 할인) ===== */
 function shopPrices() {
   const f = run.floor, disc = 1 - run.mods.shopDiscount;
-  return { pot: Math.trunc(B.potionPrice(f) * disc), gear: Math.trunc(B.gearPrice(f) * disc) };
+  return {
+    pot: Math.trunc(B.potionPrice(f) * disc),
+    gear: Math.trunc(B.gearPrice(f) * disc),
+    charm: Math.trunc(CONSUM.charm.price(f) * disc)
+  };
 }
 function openShop() {
   uiMode = 'shop';
@@ -1644,8 +2082,11 @@ function renderShop() {
     '<div class="shop-item"><div class="info">🧪 포션<small>HP 40% 회복 (보유 ' +
       '<span id="shopPot">' + run.potions + '</span>개)</small></div>' +
       '<button class="buy-btn" id="buyPot" onclick="buyPotion()">💰 ' + pr.pot + '</button></div>' +
-    '<div class="shop-item"><div class="info">🗡️ 장비<small>⚔️+' + B.gearAtk(f) + ' 🛡️+' + B.gearDef(f) +
-      ' ❤️+' + B.gearHp(f) + ' (층 비례 성장)</small></div>' +
+    '<div class="shop-item"><div class="info">🔮 홀짝 부적<small>이번 굴림 홀/짝 강제 (보유 ' +
+      '<span id="shopCharm">' + run.bag.charm + '</span>개)</small></div>' +
+      '<button class="buy-btn" id="buyCharm" onclick="buyCharm()">💰 ' + pr.charm + '</button></div>' +
+    '<div class="shop-item"><div class="info">🗡️ 장비<small>무작위 장비 — 슬롯 4종 · 등급 5단계' +
+      ' (하위품은 자동 매각)</small></div>' +
       '<button class="buy-btn" id="buyGear" onclick="buyGear()">💰 ' + pr.gear + '</button></div>' +
     '<button class="m-btn dark" onclick="closeShop()">나가기</button>'
   );
@@ -1655,8 +2096,19 @@ function refreshShopButtons() {
   const pr = shopPrices();
   $('shopGold').textContent = run.gold;
   $('shopPot').textContent = run.potions;
+  $('shopCharm').textContent = run.bag.charm;
   $('buyPot').disabled = run.gold < pr.pot;
+  $('buyCharm').disabled = run.gold < pr.charm;
   $('buyGear').disabled = run.gold < pr.gear;
+}
+function buyCharm() {
+  const pr = shopPrices();
+  if (run.gold < pr.charm) return;
+  run.gold -= pr.charm;
+  run.bag.charm++;
+  log('🔮 홀짝 부적 구매 (-' + pr.charm + 'G)');
+  updateHUD();
+  refreshShopButtons();
 }
 function buyPotion() {
   const pr = shopPrices();
@@ -1690,7 +2142,8 @@ function makeMonsters(floor, elite, mimic) {
   const mk = (name, emoji, mhp, matk, spd, isBoss) => ({
     name, emoji, isBoss: !!isBoss,
     maxHp: mhp, hp: mhp, atk: matk, matk: matk, def, mdef: def,
-    spd, crit: 0.05, evasion: 0, accuracy: 0.9, element, st: {}
+    spd, crit: 0.05, evasion: 0, accuracy: 0.9, element, st: {},
+    trait: null, shieldedHits: 0
   });
   if (elite) {
     return [mk('정예 ' + th.mobName, '👹', Math.floor(hp * B.ELITE_HP_MULT), Math.floor(atk * B.ELITE_ATK_MULT), 9)];
@@ -1701,7 +2154,14 @@ function makeMonsters(floor, elite, mimic) {
   const count = floor <= B.SOLO_MONSTER_FLOORS ? 1 : randInt(1, 3);
   const list = [];
   for (let i = 0; i < count; i++) {
-    list.push(mk(th.mobName + (count > 1 ? ' ' + (i + 1) : ''), th.mobs[randInt(0, th.mobs.length)], hp, atk, 8));
+    // 몬스터 개성 (깊이 v5): 3층부터 35% — 이름으로 노출해 "누굴 먼저 잡지?"를 만든다
+    const trait = rollTrait(floor);
+    const baseName = th.mobName + (count > 1 ? ' ' + (i + 1) : '');
+    const m = mk(trait ? TRAITS[trait].n + ' ' + baseName : baseName,
+                 th.mobs[randInt(0, th.mobs.length)], hp, atk, 8);
+    m.trait = trait;
+    if (trait === 'shielded') m.shieldedHits = 2;
+    list.push(m);
   }
   return list;
 }
@@ -1710,10 +2170,12 @@ function makeBoss(floor) {
   const hp = Math.floor(B.monsterHp(floor) * B.BOSS_HP_MULT);
   const atk = Math.floor(B.monsterAtk(floor) * B.BOSS_ATK_MULT);
   const def = B.monsterDef(floor);
+  const trait = floor >= 10 ? 'enrage' : null; // 심층 보스: 광폭화 고정 (깊이 v5)
   return [{
-    name: th.bossName, emoji: th.boss, isBoss: true,
+    name: (trait ? TRAITS[trait].n + ' ' : '') + th.bossName, emoji: th.boss, isBoss: true,
     maxHp: hp, hp, atk, matk: atk, def, mdef: def,
-    spd: 9, crit: 0.05, evasion: 0, accuracy: 0.9, element: floorElement(floor), st: {}
+    spd: 9, crit: 0.05, evasion: 0, accuracy: 0.9, element: floorElement(floor), st: {},
+    trait, shieldedHits: 0
   }];
 }
 
@@ -1742,9 +2204,12 @@ function startBattle(cfg) {
     burnOnHit: burnOnHitChance(sh),
     reviveRatio: hasReviveBoost(sh) ? 0.7 : 0.5, // 소생의 빛: 부활 HP 70%
     isBoss: !!cfg.isBoss,
+    isElite: !!cfg.isElite,
     title: cfg.title,
     onWin: cfg.onWin,
+    onFlee: cfg.onFlee || (() => endTurn()), // 연막탄 도주: 보상·점령 없음
     xpKills: 0,
+    over: false,
     locked: true
   };
   let badges = '';
@@ -1773,7 +2238,12 @@ function startBattle(cfg) {
       '<div class="pl-hp"><div class="hpbar"><div class="hpfill" id="btPhpFill"></div><span id="btPhpText"></span></div></div>' +
       '<div class="pl-shield" id="btShield"></div>' +
     '</div>' +
+    '<div class="chips" id="btPlChips"></div>' +
     '<div class="skillbar" id="btSkillBar"></div>' +
+    '<div class="bt-consum">' +
+      '<button id="btnBtBomb" onclick="btBomb()" disabled>💣 폭탄</button>' +
+      '<button id="btnBtSmoke" onclick="btSmoke()" disabled>🌫 연막탄</button>' +
+    '</div>' +
     '<div class="actions">' +
       '<button class="act-btn atk" id="btnAtk" onclick="btAttack()">⚔️ 공격</button>' +
       '<button class="act-btn def" id="btnDef" onclick="btDefend()">🛡️ 방어<small>피해 50%↓</small></button>' +
@@ -1823,20 +2293,40 @@ function battleButtons(enabled) {
     pot.innerHTML = '🧪 포션 ×' + run.potions + '<small>HP 40%</small>';
     if (enabled && (run.potions <= 0 || run.player.hp >= run.player.maxHp)) pot.disabled = true;
   }
+  // v5 소모품: 폭탄·연막탄은 전투 중 버튼 (턴을 소비하지 않는 즉시 사용)
+  const bomb = $('btnBtBomb'), smoke = $('btnBtSmoke');
+  if (bomb) {
+    bomb.innerHTML = '💣 폭탄 ×' + run.bag.bomb + '<small>적 전체 ' + bombDamage(run.floor) + ' 피해</small>';
+    bomb.disabled = !enabled || run.bag.bomb <= 0;
+  }
+  if (smoke) {
+    smoke.innerHTML = '🌫 연막탄 ×' + run.bag.smoke +
+      '<small>' + (bt && bt.isBoss ? '보스전 사용 불가' : '도주 — 보상·점령 없음') + '</small>';
+    smoke.disabled = !enabled || run.bag.smoke <= 0 || (bt && bt.isBoss);
+  }
   renderSkillBar(enabled);
 }
 function btMsg(t) {
   const el = $('btMsg');
   if (el) el.textContent = t;
 }
-function renderChips(m, i) {
-  const box = $('bt-chips-' + i);
-  if (!box) return;
-  box.innerHTML = Object.keys(m.st).map(k => {
-    const s = STATUS_INFO[k], e = m.st[k];
+function statusChips(unit) {
+  return Object.keys(unit.st).map(k => {
+    const s = STATUS_INFO[k], e = unit.st[k];
     return '<span class="chip ' + s.cls + '">' + s.icon + s.n +
       (e.stacks > 1 ? '×' + e.stacks : '') + '</span>';
   }).join('');
+}
+function renderChips(m, i) {
+  const box = $('bt-chips-' + i);
+  if (!box) return;
+  let h = '';
+  if (m.trait) { // 트레이트는 이름·아이콘으로 상시 노출 (깊이 v5)
+    h += '<span class="chip trait">' + TRAITS[m.trait].icon + TRAITS[m.trait].n +
+      (m.trait === 'shielded' && m.shieldedHits > 0 ? '×' + m.shieldedHits : '') +
+      (m.trait === 'enrage' && m.hp > 0 && m.hp / m.maxHp < 0.5 ? '!' : '') + '</span>';
+  }
+  box.innerHTML = h + statusChips(m);
 }
 function updateBattleUI() {
   if (!bt) return;
@@ -1848,6 +2338,8 @@ function updateBattleUI() {
     if (m.hp <= 0) box.classList.add('dead');
     renderChips(m, i);
   });
+  const plChips = $('btPlChips');
+  if (plChips) plChips.innerHTML = statusChips(run.player); // 플레이어 상태이상 (맹독 등)
   const p = run.player;
   const fill = $('btPhpFill'), txt = $('btPhpText'), shEl = $('btShield');
   if (fill) {
@@ -1862,18 +2354,111 @@ function updateBattleUI() {
 }
 
 function playerTurnStart() {
-  if (!bt) return;
+  if (!bt || bt.over) return;
   bt.defending = false;
+  // 플레이어 턴 시작: 상태이상 틱 (맹독 몬스터가 중독을 건다 — InteractiveBattle.DoRound)
+  const tick = tickStatuses(run.player);
+  if (tick.damage > 0) {
+    run.player.hp = Math.max(0, run.player.hp - tick.damage);
+    floatText($('btPlRow'), '-' + tick.damage + ' ☠', 'dmg');
+    log('☠ 상태이상 피해 -' + tick.damage);
+    updateBattleUI();
+    if (run.player.hp <= 0 && !btTryRevive()) { loseBattle(); return; }
+  }
+  if (tick.skip) {
+    bt.locked = true;
+    battleButtons(false);
+    btMsg('💫 기절해서 움직일 수 없다!');
+    updateBattleUI();
+    setTimeout(afterPlayerAction, 600);
+    return;
+  }
   bt.locked = false;
   btMsg('▶ 당신의 턴');
   battleButtons(true);
+  updateBattleUI();
 }
 function aliveMonsters() { return bt.monsters.filter(m => m.hp > 0); }
+
+/* 부활 시도 (성직자 패시브, 런당 1회) — 성공 시 true */
+function btTryRevive() {
+  if (!run.reviveLeft) return false;
+  run.reviveLeft = false;
+  run.player.hp = Math.trunc(run.player.maxHp * bt.reviveRatio);
+  floatText($('btPlRow'), '✨ 부활!', 'heal');
+  btMsg('✨ 신앙의 힘으로 부활했다! HP ' + Math.round(bt.reviveRatio * 100) + '%');
+  log('✨ 부활! (런당 1회)');
+  updateBattleUI();
+  return true;
+}
+/* 폭발 트레이트: 죽을 때 공격력 ×1.5 피해 — 반환 false = 플레이어 사망(전투 종료) */
+function resolveDeathExplosion(dead) {
+  if (dead.trait !== 'explosive') return true;
+  const boom = Math.trunc(dead.atk * 1.5);
+  run.player.hp = Math.max(0, run.player.hp - boom);
+  flashHit($('btPlRow'));
+  shake($('modalBox'));
+  floatText($('btPlRow'), '💥 -' + boom, 'dmg');
+  log('💥 ' + dead.name + '이(가) 폭발했다! -' + boom);
+  updateBattleUI();
+  if (run.player.hp > 0 || btTryRevive()) return true;
+  loseBattle();
+  return false;
+}
+
+/* ===== v5 소모품: 폭탄 (전투 중 즉시 사용, 턴 소비 없음) ===== */
+function btBomb() {
+  if (!bt || bt.locked || bt.over || run.bag.bomb <= 0) return;
+  run.bag.bomb--;
+  const dmg = bombDamage(run.floor);
+  // C# RunController와 동일: 폭탄 피해는 트레이트(폭발) 유발 없이 정산
+  for (const m of aliveMonsters()) {
+    const idx = bt.monsters.indexOf(m);
+    m.hp = Math.max(0, m.hp - dmg);
+    flashHit($('bt-en-' + idx));
+    floatText($('bt-en-' + idx), '-' + dmg, 'dmg');
+    if (m.hp <= 0) {
+      run.kills++;
+      log('☠️ ' + m.name + ' — 폭탄에 휘말려 쓰러졌다!');
+    }
+  }
+  shake($('modalBox'));
+  btMsg('💣 폭탄! 적 전체 -' + dmg);
+  log('💣 폭탄 투척! 적 전체 -' + dmg);
+  updateBattleUI();
+  if (aliveMonsters().length === 0) {
+    bt.locked = true;
+    battleButtons(false);
+    bt.xpKills += 1; // 폭탄 전멸: 처치 1마리분 경험치 (RunController.Fight)
+    winBattle();
+    return;
+  }
+  battleButtons(!bt.locked);
+}
+/* ===== v5 소모품: 연막탄 (전투 1회 회피 — 보상·점령 없음, 보스 불가) ===== */
+function btSmoke() {
+  if (!bt || bt.locked || bt.over || bt.isBoss || run.bag.smoke <= 0) return;
+  run.bag.smoke--;
+  bt.over = true;
+  bt.locked = true;
+  battleButtons(false);
+  btMsg('🌫 연막탄! 어둠 속으로 사라졌다...');
+  log('🌫 연막탄으로 도주했다. (보상·점령 없음)');
+  const cb = bt.onFlee;
+  setTimeout(() => {
+    bt = null;
+    closeOverlay();
+    updateHUD();
+    cb();
+  }, 700);
+}
 
 /* 플레이어 타격 (기본 공격 or 공격 스킬) — InteractiveBattle.PlayerStrike */
 function playerStrike(skill) {
   const aoe = !!(skill && skill.aoe);
-  const alive = aliveMonsters().slice().sort((a, b) => a.hp - b.hp);
+  // 타겟 우선순위: 치유사 > 저체력 (트레이트가 만드는 결정 — InteractiveBattle.PlayerStrike)
+  const alive = aliveMonsters().slice().sort((a, b) =>
+    (a.trait === 'healer' ? 0 : 1) - (b.trait === 'healer' ? 0 : 1) || a.hp - b.hp);
   const targets = aoe ? aliveMonsters() : alive.slice(0, 1);
   let msgParts = [];
 
@@ -1886,13 +2471,19 @@ function playerStrike(skill) {
       msgParts.push(t.name + ' 회피!');
       continue;
     }
-    t.hp = Math.max(0, t.hp - r.dmg);
+    let dmg = r.dmg;
+    if (t.shieldedHits > 0) { // 장갑: 첫 2회 피격 절반
+      dmg = Math.max(1, Math.trunc(dmg / 2));
+      t.shieldedHits--;
+      floatText(enEl, '🛡 장갑!', 'res');
+    }
+    t.hp = Math.max(0, t.hp - dmg);
     flashHit(enEl);
     shake($('modalBox'));
-    floatText(enEl, (r.crit ? '크리! -' : '-') + r.dmg, r.crit ? 'crit' : 'dmg');
+    floatText(enEl, (r.crit ? '크리! -' : '-') + dmg, r.crit ? 'crit' : 'dmg');
     if (r.mult > 1) floatText(enEl, '효과적! ×' + r.mult, 'eff');
     else if (r.mult < 1) floatText(enEl, '비효과적 ×' + r.mult, 'res');
-    msgParts.push(t.name + ' -' + r.dmg + (r.crit ? ' 크리!' : ''));
+    msgParts.push(t.name + ' -' + dmg + (r.crit ? ' 크리!' : ''));
 
     if (t.hp > 0) {
       if (skill && skill.applies) {
@@ -1901,10 +2492,21 @@ function playerStrike(skill) {
         applyStatus(t, 'burn', 1); // 룬 나이트 발화
         floatText(enEl, '🔥 발화!', 'eff');
       }
-    } else {
+      // 인화 콤보: 화상 5중첩 도달 시 폭발 (중첩×6 즉발 + 화상 제거)
+      const boom = tryDetonateBurn(t);
+      if (boom > 0) {
+        t.hp = Math.max(0, t.hp - boom);
+        flashHit(enEl);
+        floatText(enEl, '💥 인화! -' + boom, 'crit');
+        log('💥 인화! ' + t.name + '의 화상이 폭발했다 (-' + boom + ')');
+        msgParts.push('인화 -' + boom);
+      }
+    }
+    if (t.hp <= 0) {
       run.kills++;
       bt.xpKills++;
       log('☠️ ' + t.name + ' 처치!');
+      if (!resolveDeathExplosion(t)) { updateBattleUI(); return; } // 폭발 트레이트로 사망
     }
   }
   btMsg((skill ? '💫 ' + skill.name + '! ' : '⚔️ ') + msgParts.join(' / '));
@@ -1975,7 +2577,7 @@ function btPotion() {
 
 /* 플레이어 행동 후: 승리 확인 → 몬스터 반격 → 쿨다운 감소 */
 function afterPlayerAction() {
-  if (!bt) return;
+  if (!bt || bt.over) return;
   if (aliveMonsters().length === 0) { winBattle(); return; }
   const monstersSkip = bt.firstRound && bt.playerFirst;
   bt.firstRound = false;
@@ -1991,7 +2593,7 @@ function monsterPhase() {
   const list = aliveMonsters();
   let i = 0;
   const next = () => {
-    if (!bt) return;
+    if (!bt || bt.over) return;
     if (i >= list.length) { endRound(); return; }
     const m = list[i++];
     if (m.hp <= 0) { next(); return; }
@@ -2009,6 +2611,7 @@ function monsterPhase() {
         bt.xpKills++;
         log('☠️ ' + m.name + ' — 상태이상으로 쓰러졌다!');
         btMsg('☠ ' + m.name + ' 도트 피해로 사망!');
+        if (!resolveDeathExplosion(m)) return; // 폭발 트레이트
         setTimeout(next, T.MOB_GAP * 0.6);
         return;
       }
@@ -2021,6 +2624,21 @@ function monsterPhase() {
       return;
     }
 
+    // 치유사: 다친 동료(HP 60%↓)가 있으면 공격 대신 12% 회복 → 먼저 잡아야 함
+    if (m.trait === 'healer') {
+      const hurt = aliveMonsters().filter(x => x !== m && x.hp / x.maxHp < 0.6)
+        .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (hurt) {
+        const heal = Math.trunc(hurt.maxHp * 0.12);
+        hurt.hp = Math.min(hurt.maxHp, hurt.hp + heal);
+        floatText($('bt-en-' + bt.monsters.indexOf(hurt)), '+' + heal, 'heal');
+        btMsg('💚 ' + m.name + '이(가) ' + hurt.name + '을(를) 회복시켰다! +' + heal);
+        updateBattleUI();
+        setTimeout(next, T.MOB_GAP);
+        return;
+      }
+    }
+
     const r = computeDamage(m, run.player, null, 0);
     if (r.miss) {
       floatText($('btPlRow'), 'MISS', 'miss');
@@ -2029,6 +2647,11 @@ function monsterPhase() {
       return;
     }
     let dmg = r.dmg;
+    let enraged = false;
+    if (m.trait === 'enrage' && m.hp / m.maxHp < 0.5) { // 광폭: HP 50%↓ 공격 ×1.4
+      dmg = Math.trunc(dmg * 1.4);
+      enraged = true;
+    }
     if (bt.defending) dmg = Math.max(1, Math.trunc(dmg / 2));
     const absorbed = Math.min(bt.shield, dmg);
     if (absorbed > 0) {
@@ -2042,19 +2665,19 @@ function monsterPhase() {
     flashHit(plRow);
     shake($('modalBox'));
     if (real > 0) floatText(plRow, '-' + real, r.crit ? 'crit' : 'dmg');
-    btMsg('💢 ' + m.name + '의 공격! -' + real +
+    btMsg((enraged ? '😡 광폭화! ' : '💢 ') + m.name + '의 공격! -' + real +
       (absorbed > 0 ? ' (실드 ' + absorbed + ' 흡수)' : '') +
       (bt.defending ? ' (방어)' : '') + (r.crit ? ' 크리!' : ''));
+
+    // 맹독: 공격마다 플레이어 중독 1중첩 → 장기전 금지
+    if (m.trait === 'venomous' && run.player.hp > 0) {
+      applyStatus(run.player, 'poison', 1);
+      floatText(plRow, '🧪 중독!', 'eff');
+    }
     updateBattleUI();
 
     if (run.player.hp <= 0) {
-      if (run.reviveLeft) {
-        run.reviveLeft = false;
-        run.player.hp = Math.trunc(run.player.maxHp * bt.reviveRatio);
-        floatText(plRow, '✨ 부활!', 'heal');
-        btMsg('✨ 신앙의 힘으로 부활했다! HP ' + Math.round(bt.reviveRatio * 100) + '%');
-        log('✨ 부활! (런당 1회)');
-        updateBattleUI();
+      if (btTryRevive()) {
         setTimeout(next, T.MOB_GAP);
         return;
       }
@@ -2067,13 +2690,15 @@ function monsterPhase() {
 }
 
 function endRound() {
-  if (!bt) return;
+  if (!bt || bt.over) return;
   for (const s of run.skills) if (s.cur > 0) s.cur--;
   if (aliveMonsters().length === 0) { winBattle(); return; }
   setTimeout(playerTurnStart, 500);
 }
 
 function winBattle() {
+  if (!bt || bt.over) return;
+  bt.over = true;
   btMsg('🎉 승리!');
   const cb = bt.onWin;
   // 경험치: 처치 수 × (5+층×3) × 보스 5배 (RunController.GainBattleXp)
@@ -2092,6 +2717,8 @@ function winBattle() {
   }, T.WIN_CLOSE);
 }
 function loseBattle() {
+  if (!bt || bt.over) return;
+  bt.over = true;
   btMsg('💀 쓰러졌다...');
   log('💀 전투에서 패배했다...');
   setTimeout(() => {
@@ -2235,10 +2862,23 @@ function renderSkillTree(inChain) {
     }).join('');
 
   let html =
-    '<div class="m-title">📖 스킬 트리 — ' + jobName(sh) + '</div>' +
+    '<div class="m-title">📖 캐릭터 — ' + jobName(sh) + '</div>' +
     '<div class="tree-pts">스킬 포인트 <b>' + sh.points + '</b> (액티브는 계수 상위 ' + B.SKILL_SLOTS + '개 자동 장착)</div>' +
     section('1차 — ' + CHARS[sh.job].name, BASE_TREES[sh.job]);
   if (sh.advanced) html += section('2차 — ' + PATHS[sh.advanced].name, PATHS[sh.advanced].tree);
+  // 장비 v2: 현재 장착 4슬롯 (등급 색상)
+  html += '<div class="tree-sec">🎒 장비 — 4슬롯 (점수 높은 것 자동 장착, 하위품 매각)</div>' +
+    SLOT_KEYS.map(k => {
+      const e = run.loadout[k];
+      return '<div class="sk-row">' +
+        '<div class="sk-icon">' + SLOT_INFO[k].icon + '</div>' +
+        '<div class="sk-body">' +
+          '<div class="sk-name">' + SLOT_INFO[k].n + ' — ' +
+            (e ? '<span class="rar' + e.rarity + '">' + gearDisplayName(e) + '</span>'
+               : '<span style="color:#585174">비어 있음</span>') + '</div>' +
+          '<div class="sk-desc">' + (e ? gearStatText(e) : '전투·보물·상점에서 획득') + '</div>' +
+        '</div></div>';
+    }).join('');
   html += '<button class="m-btn gold" onclick="closeTree()">' + (inChain ? '✔ 완료' : '닫기') + '</button>';
   overlay(html);
 }
@@ -2368,8 +3008,12 @@ window.DD = {
   set meta(m) { meta = m; },
   get uiMode() { return uiMode; },
   get busy() { return busy; },
+  get curEvent() { return curEvent; },
   xpToLevel, skillPool, canLearn, levelOf, equipActives, pathsFor,
-  CHARS, PATHS, BASE_TREES, B, RELICS
+  // v5: 소모품·이벤트·트레이트·장비
+  buildEvents, evSuccessChance, evPickByEV, rollTrait, tryDetonateBurn,
+  generateEquipment, gearScore, applyDiceMod, bombDamage, shopPrices,
+  CHARS, PATHS, BASE_TREES, B, RELICS, CONSUM, TRAITS, RARITIES, SLOT_KEYS
 };
 
 window.addEventListener('resize', () => { if (run) placeToken(false); });
