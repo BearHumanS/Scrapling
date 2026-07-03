@@ -163,7 +163,8 @@ namespace DiceDungeon.Game
         private void RefreshSkillPanel()
         {
             var s = _sheet();
-            _skillInfo.text = $"스킬트리 — 포인트 {s.Book.Points}  (전투 장착: 계수 상위 3개 자동)";
+            string mode = s.EquippedIds.Count > 0 ? $"수동 {s.EquippedIds.Count}/{JobCatalog.SkillSlots}" : "자동(계수순)";
+            _skillInfo.text = $"스킬트리 — 포인트 {s.Book.Points}  |  장착: {mode}";
 
             foreach (Transform child in _skillList) Destroy(child.gameObject);
 
@@ -179,12 +180,14 @@ namespace DiceDungeon.Game
                     new Color(0.12f, 0.13f, 0.2f));
                 string desc = def.IsPassive ? "패시브" : $"쿨{def.Cooldown}" + (def.Aoe ? "·광역" : "");
                 string prereq = def.PrereqId.Length > 0 ? $"  [선행: {NameOf(pool, def.PrereqId)} Lv{def.PrereqLevel}]" : "";
-                UiFactory.Label(row.transform, "Name", $"{def.Name}  Lv{lv}/{def.MaxLevel}  ({desc}){prereq}",
+                bool equipped = s.EquippedIds.Contains(def.Id);
+                UiFactory.Label(row.transform, "Name",
+                    $"{(equipped ? "⭐" : "")}{def.Name}  Lv{lv}/{def.MaxLevel}  ({desc}){prereq}",
                     26, lv > 0 ? Color.white : new Color(0.65f, 0.65f, 0.7f),
-                    new Vector2(0.02f, 0), new Vector2(0.78f, 1), TextAnchor.MiddleLeft);
+                    new Vector2(0.02f, 0), new Vector2(0.62f, 1), TextAnchor.MiddleLeft);
 
                 var learnBtn = UiFactory.ActionButton(row.transform, "Learn", "배우기", 24,
-                    new Vector2(0.8f, 0.1f), new Vector2(0.98f, 0.9f),
+                    new Vector2(0.64f, 0.1f), new Vector2(0.8f, 0.9f),
                     new Color(0.3f, 0.5f, 0.3f), () =>
                     {
                         s.Book.Learn(def);
@@ -192,6 +195,21 @@ namespace DiceDungeon.Game
                         OnSkillLearned?.Invoke();
                     });
                 learnBtn.interactable = s.Book.CanLearn(def);
+
+                // 수동 장착 토글 (감사 B1: 저계수 정체성 스킬도 빌드로 선택 가능하게)
+                if (!def.IsPassive)
+                {
+                    var equipBtn = UiFactory.ActionButton(row.transform, "Equip",
+                        equipped ? "해제" : "장착", 24,
+                        new Vector2(0.82f, 0.1f), new Vector2(0.98f, 0.9f),
+                        equipped ? new Color(0.55f, 0.4f, 0.2f) : new Color(0.3f, 0.4f, 0.55f), () =>
+                        {
+                            s.ToggleEquip(def.Id);
+                            RefreshSkillPanel();
+                            OnSkillLearned?.Invoke();
+                        });
+                    equipBtn.interactable = lv > 0;
+                }
             }
         }
 

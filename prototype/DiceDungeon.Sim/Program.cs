@@ -524,14 +524,48 @@ static class SelfTest
                 && ConsumableBag.BombDamage(10) > ConsumableBag.BombDamage(1);
         });
 
-        Check("사망 시 소울스톤 페널티 적용", () =>
+        Check("수동 장착: 저계수 스킬(맹독 인장)도 선택하면 장착된다", () =>
+        {
+            var sheet = new CharacterSheet(CharacterId.Rogue);
+            while (sheet.Level < JobCatalog.JobChangeLevel)
+                sheet.GainXp(CharacterSheet.XpToLevel(sheet.Level));
+            sheet.JobChange(JobCatalog.Assassin);
+            // 독 빌드를 직접 학습 (자동 학습은 선행 순서상 다른 스킬을 우선한다)
+            sheet.Book.Points = 10;
+            var poison = JobCatalog.BaseTree(CharacterId.Rogue).First(s => s.Id == "rg_poison");
+            var venom = JobCatalog.Assassin.Tree.First(s => s.Id == "as_venom");
+            var ambush = JobCatalog.BaseTree(CharacterId.Rogue).First(s => s.Id == "rg_ambush");
+            var flurry = JobCatalog.BaseTree(CharacterId.Rogue).First(s => s.Id == "rg_flurry");
+            var back = JobCatalog.Assassin.Tree.First(s => s.Id == "as_back");
+            sheet.Book.Learn(poison); sheet.Book.Learn(poison); sheet.Book.Learn(poison);
+            sheet.Book.Learn(venom);
+            // 고계수 경쟁자 3종 확보 → 자동 장착이 맹독 인장을 밀어내는 상황 재현
+            sheet.Book.Learn(ambush); sheet.Book.Learn(ambush);
+            sheet.Book.Learn(back); sheet.Book.Learn(flurry);
+            if (sheet.Book.LevelOf("as_venom") <= 0) return false;
+
+            // 자동: 맹독 인장(계수 1.0)은 백스탭(2.3) 등에 밀려 벤치 — 감사 B1의 재현
+            sheet.EquippedIds.Clear();
+            bool benchedByAuto = sheet.EquipSkills().All(s => s.Name != "맹독 인장");
+
+            // 수동: 토글하면 장착
+            if (!sheet.ToggleEquip("as_venom")) return false;
+            bool equippedManually = sheet.EquipSkills().Any(s => s.Name == "맹독 인장");
+            // 패시브·미학습·슬롯 초과 방어
+            bool passiveRejected = !sheet.ToggleEquip("as_lethal");
+            return benchedByAuto && equippedManually && passiveRejected;
+        });
+
+        Check("사망 시 소울스톤 페널티: 킬 보상만 70%, 도달층 보상은 보존", () =>
         {
             var died = Enumerable.Range(0, 2000)
                 .Select(s => new RunController(s, new RunConfig(), new GreedyPolicy(descendHpThreshold: 0)).Play())
                 .FirstOrDefault(r => r.DeathFloor > 0);
             if (died == null) return false;
-            int full = Balance.SoulstonesForRun(died.FloorsCleared, died.MonstersKilled);
-            return died.Soulstones == (int)(full * Balance.DeathSoulstonePenalty);
+            int expected = Balance.FloorSoulstones(died.FloorsCleared)
+                           + (int)(died.MonstersKilled * Balance.DeathSoulstonePenalty);
+            return died.Soulstones == expected
+                && Balance.FloorSoulstones(10) > Balance.FloorSoulstones(5) * 2; // 심층 가중 확인
         });
 
         Console.WriteLine($"\n{_passed}/{_total} 통과");

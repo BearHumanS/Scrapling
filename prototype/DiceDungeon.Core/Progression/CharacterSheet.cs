@@ -156,7 +156,32 @@ namespace DiceDungeon.Core.Progression
             return unit;
         }
 
-        public List<Skill> EquipSkills() => Book.EquipActives(SkillPool, JobCatalog.SkillSlots);
+        /// <summary>
+        /// 수동 장착 목록 (감사 B1: 자동 장착이 저계수 정체성 스킬 — 예: 맹독 인장 — 을
+        /// 영구 벤치시키는 문제 수정). 비어 있으면 자동(계수순), UI에서 토글로 채운다.
+        /// </summary>
+        public List<string> EquippedIds { get; } = new List<string>();
+
+        /// <summary>장착 토글. 반환: 변경 여부 (미학습·슬롯 초과 시 false).</summary>
+        public bool ToggleEquip(string skillId)
+        {
+            if (EquippedIds.Remove(skillId)) return true;
+            if (EquippedIds.Count >= JobCatalog.SkillSlots) return false;
+            var def = SkillPool.FirstOrDefault(d => d.Id == skillId && !d.IsPassive);
+            if (def == null || Book.LevelOf(skillId) <= 0) return false;
+            EquippedIds.Add(skillId);
+            return true;
+        }
+
+        public List<Skill> EquipSkills()
+        {
+            // 수동 선택이 있으면 그대로 (학습 취소된 항목은 정리), 없으면 자동
+            var manual = SkillPool.Where(d => EquippedIds.Contains(d.Id) && Book.LevelOf(d.Id) > 0 && !d.IsPassive)
+                                  .Take(JobCatalog.SkillSlots)
+                                  .Select(d => d.Instantiate(Book.LevelOf(d.Id)))
+                                  .ToList();
+            return manual.Count > 0 ? manual : Book.EquipActives(SkillPool, JobCatalog.SkillSlots);
+        }
 
         public double BurnOnHitChance => Book.PassiveSum(SkillPool, PassiveType.BurnOnHitPct);
         public bool HasCaptureShieldTriple => Book.PassiveSum(SkillPool, PassiveType.CaptureShieldTriple) > 0;

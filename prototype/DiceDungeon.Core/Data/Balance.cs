@@ -76,9 +76,15 @@ namespace DiceDungeon.Core.Data
         public static int GearPrice(int floor) => 60 + floor * 25;
         public const double PotionHealRatio = 0.40;
 
-        // 런 결산: 소울스톤 = 클리어 층수 가중 합
-        public static int SoulstonesForRun(int floorsCleared, int monstersKilled)
-            => floorsCleared * 10 + monstersKilled;
-        public const double DeathSoulstonePenalty = 0.7; // 사망 시 70%만 회수
+        // 런 결산 (v8 — 감사 A1 대응: "도전이 보상받지 못함" 수정)
+        // 층 가치는 깊을수록 증가 (층 i = 3+3i, 누적 3f+1.5f(f+1)):
+        //   f=3→27, f=5→60, f=8→126, f=10→195, f=15→405
+        // 사망 페널티는 킬 보상에만 적용 — 도달층 보상은 업적으로 보존
+        public static int FloorSoulstones(int floorsCleared)
+            => (int)(3 * floorsCleared + 1.5 * floorsCleared * (floorsCleared + 1));
+        public static int SoulstonesForRun(int floorsCleared, int monstersKilled, bool died)
+            => FloorSoulstones(floorsCleared)
+               + (int)(monstersKilled * (died ? DeathSoulstonePenalty : 1.0));
+        public const double DeathSoulstonePenalty = 0.7; // 사망 시 킬 보상 70%만 회수
     }
 }

@@ -147,10 +147,10 @@ namespace DiceDungeon.Core.Run
             }
 
             _result.Gold = _gold;
-            double stones = Balance.SoulstonesForRun(_result.FloorsCleared, _result.MonstersKilled)
+            // v8: 사망 페널티는 킬 보상에만 — 도달층 보상은 보존 (감사 A1)
+            double stones = Balance.SoulstonesForRun(
+                                _result.FloorsCleared, _result.MonstersKilled, _result.DeathFloor > 0)
                             * _config.Mods.SoulstoneMult;
-            if (_result.DeathFloor > 0)
-                stones *= Balance.DeathSoulstonePenalty;
             _result.Soulstones = (int)stones;
             return _result;
         }
