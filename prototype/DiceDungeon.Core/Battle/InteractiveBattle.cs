@@ -10,7 +10,8 @@ namespace DiceDungeon.Core.Battle
     public enum BattleEventType
     {
         PlayerHit, MonsterHit, Miss, PlayerMiss, ShieldAbsorb, ShieldGain, Heal, StatusApplied,
-        StatusTick, Stunned, MonsterDied, PlayerDied, Revived, Victory, Defeat
+        StatusTick, Stunned, MonsterDied, PlayerDied, Revived, Victory, Defeat,
+        MonsterHealed, Detonate, DeathExplosion // 깊이 v5: 트레이트·콤보
     }
 
     /// <summary>Presentation이 순서대로 재생할 전투 사건 하나.</summary>
@@ -79,8 +80,36 @@ namespace DiceDungeon.Core.Battle
             if (Over) return events;
             _defending = false;
 
-            // 플레이어 턴 시작: 상태이상 (본편: 플레이어도 디버프 가능. 프로토타입은 몬스터만 걸림)
-            switch (action)
+            // 플레이어 턴 시작: 상태이상 틱 (맹독 몬스터가 중독을 건다)
+            var (playerDot, playerSkip) = Player.Statuses.Tick(Player);
+            if (playerDot > 0)
+            {
+                Player.TakeDamage(playerDot);
+                events.Add(new BattleEvent(BattleEventType.StatusTick, Player, Player, playerDot));
+                if (!Player.IsAlive)
+                {
+                    if (_reviveLeft)
+                    {
+                        _reviveLeft = false;
+                        ReviveUsed = true;
+                        Player.Hp = (int)(Player.MaxHp * _options.ReviveRatio);
+                        events.Add(new BattleEvent(BattleEventType.Revived, Player, Player, Player.Hp));
+                    }
+                    else
+                    {
+                        Over = true;
+                        PlayerWon = false;
+                        events.Add(new BattleEvent(BattleEventType.Defeat));
+                        return events;
+                    }
+                }
+            }
+
+            if (playerSkip)
+            {
+                events.Add(new BattleEvent(BattleEventType.Stunned, Player, Player));
+            }
+            else switch (action)
             {
                 case PlayerActionType.Attack:
                     PlayerStrike(events, null);
@@ -144,6 +173,7 @@ namespace DiceDungeon.Core.Battle
                         {
                             MonstersKilled++;
                             events.Add(new BattleEvent(BattleEventType.MonsterDied, m, m));
+                            if (!ResolveDeathTrait(m, events)) return events;
                             continue;
                         }
                     }
@@ -153,12 +183,28 @@ namespace DiceDungeon.Core.Battle
                         continue;
                     }
 
+                    // 치유사: 다친 동료가 있으면 공격 대신 회복
+                    if (m.Trait == MonsterTrait.Healer)
+                    {
+                        var hurt = _monsters.Where(x => x.IsAlive && x != m && x.HpRatio < 0.6)
+                                            .OrderBy(x => x.HpRatio).FirstOrDefault();
+                        if (hurt != null)
+                        {
+                            int heal = (int)(hurt.MaxHp * 0.12);
+                            hurt.Heal(heal);
+                            events.Add(new BattleEvent(BattleEventType.MonsterHealed, m, hurt, heal));
+                            continue;
+                        }
+                    }
+
                     int dmg = DamageCalc.Compute(m, Player, null, _rng, 0, out _, out bool monsterMiss);
                     if (monsterMiss)
                     {
                         events.Add(new BattleEvent(BattleEventType.Miss, m, Player));
                         continue;
                     }
+                    if (m.Trait == MonsterTrait.Enrage && m.HpRatio < 0.5)
+                        dmg = (int)(dmg * 1.4); // 광폭화
                     if (_defending) dmg = Math.Max(1, dmg / 2);
                     int absorbed = Math.Min(Shield, dmg);
                     if (absorbed > 0)
@@ -168,6 +214,11 @@ namespace DiceDungeon.Core.Battle
                     }
                     Player.TakeDamage(dmg - absorbed);
                     events.Add(new BattleEvent(BattleEventType.MonsterHit, m, Player, dmg - absorbed));
+                    if (m.Trait == MonsterTrait.Venomous && Player.IsAlive)
+                    {
+                        Player.Statuses.Apply(StatusType.Poison); // 맹독
+                        events.Add(new BattleEvent(BattleEventType.StatusApplied, m, Player));
+                    }
 
                     if (!Player.IsAlive)
                     {
@@ -201,9 +252,12 @@ namespace DiceDungeon.Core.Battle
         private void PlayerStrike(List<BattleEvent> events, Skill skill)
         {
             bool aoe = skill?.Aoe ?? false;
+            // 타겟 우선순위: 치유사 > 저체력 (트레이트가 만드는 결정)
             var targets = aoe
                 ? _monsters.Where(m => m.IsAlive).ToList()
-                : _monsters.Where(m => m.IsAlive).OrderBy(m => m.Hp).Take(1).ToList();
+                : _monsters.Where(m => m.IsAlive)
+                           .OrderBy(m => m.Trait == MonsterTrait.Healer ? 0 : 1)
+                           .ThenBy(m => m.Hp).Take(1).ToList();
 
             foreach (var t in targets)
             {
@@ -213,6 +267,7 @@ namespace DiceDungeon.Core.Battle
                     events.Add(new BattleEvent(BattleEventType.PlayerMiss, Player, t));
                     continue;
                 }
+                if (t.ShieldedHitsLeft > 0) { dmg = Math.Max(1, dmg / 2); t.ShieldedHitsLeft--; } // 장갑
                 t.TakeDamage(dmg);
                 events.Add(new BattleEvent(BattleEventType.PlayerHit, Player, t, dmg, crit));
                 if (t.IsAlive)
@@ -227,13 +282,41 @@ namespace DiceDungeon.Core.Battle
                         t.Statuses.Apply(StatusType.Burn);
                         events.Add(new BattleEvent(BattleEventType.StatusApplied, Player, t));
                     }
+                    if (t.Statuses.TryDetonateBurn(out int boom))
+                    {
+                        t.TakeDamage(boom); // 인화: 화상 5중첩 폭발
+                        events.Add(new BattleEvent(BattleEventType.Detonate, Player, t, boom));
+                    }
                 }
                 if (!t.IsAlive)
                 {
                     MonstersKilled++;
                     events.Add(new BattleEvent(BattleEventType.MonsterDied, Player, t));
+                    if (!ResolveDeathTrait(t, events)) return;
                 }
             }
+        }
+
+        /// <summary>폭발 트레이트: 죽을 때 공격력 ×1.5 피해. 반환 false = 플레이어 사망(전투 종료).</summary>
+        private bool ResolveDeathTrait(Unit dead, List<BattleEvent> events)
+        {
+            if (dead.Trait != MonsterTrait.Explosive) return true;
+            int boom = (int)(dead.Atk * 1.5);
+            Player.TakeDamage(boom);
+            events.Add(new BattleEvent(BattleEventType.DeathExplosion, dead, Player, boom));
+            if (Player.IsAlive) return true;
+            if (_reviveLeft)
+            {
+                _reviveLeft = false;
+                ReviveUsed = true;
+                Player.Hp = (int)(Player.MaxHp * _options.ReviveRatio);
+                events.Add(new BattleEvent(BattleEventType.Revived, Player, Player, Player.Hp));
+                return true;
+            }
+            Over = true;
+            PlayerWon = false;
+            events.Add(new BattleEvent(BattleEventType.Defeat));
+            return false;
         }
 
         private bool CheckVictory(List<BattleEvent> events)

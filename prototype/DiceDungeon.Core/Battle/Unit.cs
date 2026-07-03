@@ -19,6 +19,10 @@ namespace DiceDungeon.Core.Battle
         public double Accuracy { get; set; } = 0.9;
         /// <summary>방어 속성 (몬스터: 층 테마, 플레이어: 무속성).</summary>
         public Element Element { get; set; } = Element.Neutral;
+        /// <summary>몬스터 개성 (깊이 v5).</summary>
+        public MonsterTrait Trait { get; set; } = MonsterTrait.None;
+        /// <summary>장갑 트레이트: 남은 경감 횟수.</summary>
+        public int ShieldedHitsLeft { get; set; }
 
         public bool IsAlive => Hp > 0;
         public double HpRatio => MaxHp <= 0 ? 0 : (double)Hp / MaxHp;

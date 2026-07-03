@@ -89,6 +89,7 @@ namespace DiceDungeon.Core.Run
         private int _gearCount;
         private bool _reviveLeft;
         private readonly EquipmentLoadout _loadout = new EquipmentLoadout();
+        private readonly ConsumableBag _bag = new ConsumableBag { Charms = 1 }; // 첫 런부터 조작 경험
 
         public RunController(int seed, RunConfig config, IPlayerPolicy policy)
         {
@@ -159,7 +160,9 @@ namespace DiceDungeon.Core.Run
 
             while (true)
             {
-                var roll = dice.Roll();
+                // 홀짝 부적: 원하는 타일(쉼터/내 땅/상점)의 거리 홀짝에 맞춰 굴림을 강제
+                // — 보드 이동을 "구경"에서 "결정"으로 바꾸는 소모품 (01-게임기획서 4.3)
+                var roll = RollWithCharmPolicy(dice, tiles, position, floor);
                 _result.DiceRolls++;
 
                 // 도적 패시브: 층당 1회, 낮은 눈이면 무료 리롤
@@ -191,6 +194,33 @@ namespace DiceDungeon.Core.Run
             }
         }
 
+        /// <summary>부적 사용 판단 (시뮬레이션 정책 — UI 게임에서는 플레이어 버튼).</summary>
+        private DiceResult RollWithCharmPolicy(DiceRoller dice, IReadOnlyList<Tile> tiles, int position, int floor)
+        {
+            if (_bag.Charms > 0)
+            {
+                int wantDist = DesirableDistance(tiles, position, floor);
+                if (wantDist > 0 && _bag.TryUse(ConsumableType.ParityCharm))
+                    return dice.RollWithParity(even: wantDist % 2 == 0);
+            }
+            return dice.Roll();
+        }
+
+        /// <summary>지금 가고 싶은 타일까지의 거리 (2~12, 랩 넘어가는 칸 제외). 0 = 없음.</summary>
+        private int DesirableDistance(IReadOnlyList<Tile> tiles, int position, int floor)
+        {
+            for (int d = 2; d <= 12; d++)
+            {
+                if (position + d >= Balance.BoardSize) break; // 랩(보스)은 부적 대상 아님
+                var t = tiles[position + d];
+                bool wantHeal = _player.HpRatio < 0.5
+                                && (t.Type == TileType.Rest || (t.Type == TileType.Battle && t.Captured));
+                bool wantShop = _gold >= Balance.GearPrice(floor) && t.Type == TileType.Shop;
+                if (wantHeal || wantShop) return d;
+            }
+            return 0;
+        }
+
         private bool ResolveTile(Tile tile, int floor, DiceResult roll, ref int captured)
         {
             switch (tile.Type)
@@ -204,7 +234,8 @@ namespace DiceDungeon.Core.Run
                         return true;
                     }
                     bool elite = tile.Type == TileType.Elite;
-                    if (!Fight(MakeMonsters(floor, elite), roll, captured, floor)) return false;
+                    if (!Fight(MakeMonsters(floor, elite), roll, captured, floor, out bool fled)) return false;
+                    if (fled) return true; // 연막탄 도주: 보상·점령 없음
                     tile.Captured = true;
                     captured++;
                     AddGold(Balance.BattleGold(floor) * (elite ? 2 : 1));
@@ -213,9 +244,11 @@ namespace DiceDungeon.Core.Run
 
                 case TileType.Treasure:
                     if (_rng.Chance(Balance.MimicChance))
-                        return Fight(MakeMonsters(floor, elite: false), roll, captured, floor); // 미믹 기습
-                    if (_rng.Chance(0.5)) AddGear(floor);
-                    else AddGold(Balance.TreasureGold(floor));
+                        return Fight(MakeMonsters(floor, elite: false), roll, captured, floor, out _); // 미믹 기습
+                    double v2 = _rng.NextDouble();
+                    if (v2 < 0.40) AddGear(floor);
+                    else if (v2 < 0.75) AddGold(Balance.TreasureGold(floor));
+                    else _bag.Add((ConsumableType)_rng.Next(0, 3)); // 소모품 드롭
                     return true;
 
                 case TileType.Shop:
@@ -245,17 +278,31 @@ namespace DiceDungeon.Core.Run
             }
         }
 
+        /// <summary>이벤트 선택지 시스템 (깊이 v5): 스탯 판정 리스크/리워드 — 재주·운의 전투 외 용도.</summary>
         private void ResolveEvent(int floor)
         {
-            // 프로토타입 이벤트 3종: 횡재 / 손해 / 장비 (본편은 이벤트 30종 테이블화)
-            double v = _rng.NextDouble();
-            // 마법사 패시브: 선택지 +1 → 나쁜 결과를 한 번 다시 굴림
-            if (_character.BestEventChoice && v >= 0.40 && v < 0.75)
-                v = _rng.NextDouble();
+            var def = EventCatalog.Roll(floor, _rng);
+            int idx = EventCatalog.PickByExpectedValue(def, _sheet.Stats, _player.HpRatio, _gold);
+            var choice = def.Choices[idx];
 
-            if (v < 0.40) AddGold(Balance.TreasureGold(floor));
-            else if (v < 0.75) _player.TakeDamage((int)(_player.MaxHp * 0.08));
-            else AddGear(floor);
+            double chance = choice.SuccessChance(_sheet.Stats);
+            bool success = _rng.Chance(chance);
+            // 마법사 패시브: 실패한 판정을 한 번 다시 굴림 (선택지 +1의 변형)
+            if (!success && _character.BestEventChoice)
+                success = _rng.Chance(chance);
+
+            ApplyOutcome(success ? choice.Success : choice.Fail, floor);
+        }
+
+        private void ApplyOutcome(EventOutcome o, int floor)
+        {
+            if (o.Gold > 0) AddGold(o.Gold);
+            else if (o.Gold < 0) _gold = Math.Max(0, _gold + o.Gold);
+            if (o.HpRatio > 0) _player.HealRatio(o.HpRatio);
+            else if (o.HpRatio < 0) _player.TakeDamage((int)(_player.MaxHp * -o.HpRatio));
+            if (o.Gear) AddGear(floor);
+            if (o.Item != null) _bag.Add(o.Item.Value);
+            if (o.Xp > 0) ApplyXp(o.Xp);
         }
 
         private void ShopVisit(int floor)
@@ -268,6 +315,13 @@ namespace DiceDungeon.Core.Run
             {
                 _gold -= potionPrice;
                 _potions++;
+            }
+            // 부적이 없으면 하나 확보 (조작 수단 유지)
+            int charmPrice = (int)(ConsumableBag.Price(ConsumableType.ParityCharm, floor) * discount);
+            if (_bag.Charms == 0 && _gold >= charmPrice)
+            {
+                _gold -= charmPrice;
+                _bag.Add(ConsumableType.ParityCharm);
             }
             while (_gold >= gearPrice)
             {
@@ -313,7 +367,13 @@ namespace DiceDungeon.Core.Run
             int count = floor <= Balance.SoloMonsterFloors ? 1 : _rng.Next(1, 3);
             var list = new List<Unit>();
             for (int i = 0; i < count; i++)
-                list.Add(new Unit("Mob", hp, atk, def, 8) { Element = element });
+            {
+                var trait = TraitRules.Roll(floor, _rng); // 몬스터 개성 (깊이 v5)
+                var mob = new Unit(trait == MonsterTrait.None ? "Mob" : TraitRules.Name(trait), hp, atk, def, 8)
+                { Element = element, Trait = trait };
+                if (trait == MonsterTrait.Shielded) mob.ShieldedHitsLeft = 2;
+                list.Add(mob);
+            }
             return list;
         }
 
@@ -324,16 +384,42 @@ namespace DiceDungeon.Core.Run
                 (int)(Balance.MonsterHp(floor) * Balance.BossHpMult),
                 (int)(Balance.MonsterAtk(floor) * Balance.BossAtkMult),
                 Balance.MonsterDef(floor), 9)
-            { Element = ElementTable.FloorElement(floor) };
-            return Fight(new List<Unit> { boss }, roll, captured, floor, isBoss: true);
+            {
+                Element = ElementTable.FloorElement(floor),
+                Trait = floor >= 10 ? MonsterTrait.Enrage : MonsterTrait.None, // 심층 보스: 광폭화
+            };
+            return Fight(new List<Unit> { boss }, roll, captured, floor, out _, isBoss: true);
         }
 
-        private bool Fight(List<Unit> monsters, DiceResult roll, int captured, int floor, bool isBoss = false)
+        private bool Fight(List<Unit> monsters, DiceResult roll, int captured, int floor, out bool fled, bool isBoss = false)
         {
+            fled = false;
+
+            // 연막탄: 죽을 판이면 전투 자체를 회피 (보스 제외, 보상 없음)
+            if (!isBoss && _player.HpRatio < 0.20 && _potions == 0
+                && _bag.TryUse(ConsumableType.Smoke))
+            {
+                fled = true;
+                return true;
+            }
+
             if (_policy.UsePotion(_player.HpRatio, _potions))
             {
                 _potions--;
                 _player.HealRatio(Balance.PotionHealRatio);
+            }
+
+            // 폭탄: 정예·보스전 개시 일격
+            if ((isBoss || monsters.Any(m => m.Name == "Elite")) && _bag.TryUse(ConsumableType.Bomb))
+            {
+                int boom = ConsumableBag.BombDamage(floor);
+                foreach (var m in monsters)
+                {
+                    m.TakeDamage(boom);
+                    if (!m.IsAlive) _result.MonstersKilled++;
+                }
+                monsters.RemoveAll(m => !m.IsAlive);
+                if (monsters.Count == 0) { GainBattleXp(1, floor, isBoss); return true; }
             }
 
             // 보드-전투 연동 (02-시스템설계 1.3):
@@ -367,8 +453,10 @@ namespace DiceDungeon.Core.Run
 
         /// <summary>경험치 → 레벨업(스탯 자동 배분·스킬 학습) → 전직 (07-심화시스템 5).</summary>
         private void GainBattleXp(int kills, int floor, bool isBoss)
+            => ApplyXp(kills * Balance.MonsterXp(floor) * (isBoss ? Balance.BossXpMult : 1));
+
+        private void ApplyXp(int xp)
         {
-            int xp = kills * Balance.MonsterXp(floor) * (isBoss ? Balance.BossXpMult : 1);
             if (_sheet.GainXp(xp) <= 0) return;
 
             if (_sheet.CanJobChange)

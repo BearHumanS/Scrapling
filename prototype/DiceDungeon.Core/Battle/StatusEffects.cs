@@ -66,6 +66,21 @@ namespace DiceDungeon.Core.Battle
 
         public int SpeedPenalty => Has(StatusType.Freeze) ? 3 : 0;
 
+        public int StacksOf(StatusType type) => _entries.TryGetValue(type, out var e) ? e.Stacks : 0;
+
+        /// <summary>
+        /// 인화 콤보: 화상이 5중첩에 도달하면 폭발 — 중첩 × 6 즉발 피해 후 화상 제거.
+        /// 화상 딜러의 "쌓아서 터뜨리기" 플레이 축.
+        /// </summary>
+        public bool TryDetonateBurn(out int damage)
+        {
+            damage = 0;
+            if (!_entries.TryGetValue(StatusType.Burn, out var burn) || burn.Stacks < 5) return false;
+            damage = burn.Stacks * 6;
+            _entries.Remove(StatusType.Burn);
+            return true;
+        }
+
         private static int DefaultDuration(StatusType type)
         {
             switch (type)

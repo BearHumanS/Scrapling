@@ -26,6 +26,9 @@ namespace DiceDungeon.Core.Battle
             double dmg = atkStat * coef * (100.0 / (100.0 + defStat))
                          * ElementTable.Multiplier(element, defender.Element);
 
+            // 콤보 시너지: 빙결된 대상은 크리티컬 +25%p (스킬 순서에 의미 부여)
+            if (defender.Statuses.Has(StatusType.Freeze)) critBonus += 0.25;
+
             crit = rng.Chance(attacker.CritChance + critBonus);
             if (crit) dmg *= Data.Balance.CritMultiplier;
 

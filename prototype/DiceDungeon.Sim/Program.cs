@@ -397,6 +397,65 @@ static class SelfTest
             return true;
         });
 
+        Check("이벤트: 판정 확률 25~95% 클램프, EV 선택은 잔고 부족 선택지 회피", () =>
+        {
+            var stats = new StatBlock(1, 1, 1, 1, 1, 1);
+            var strong = new StatBlock(99, 99, 99, 99, 99, 99);
+            foreach (var def in EventCatalog.Build(5))
+                foreach (var c in def.Choices)
+                {
+                    if (c.SuccessChance(stats) < 0.25 || c.SuccessChance(stats) > 1.0) return false;
+                    if (c.SuccessChance(strong) > 0.95 && c.Check != null) return false;
+                }
+            // 골드 0으로 "상인" 이벤트 → 구매 선택지를 고르면 안 됨
+            var merchant = EventCatalog.Build(5)[2];
+            int pick = EventCatalog.PickByExpectedValue(merchant, stats, 1.0, gold: 0);
+            return merchant.Choices[pick].Success.Gold >= 0;
+        });
+
+        Check("트레이트: 치유사는 동료를 회복, 장갑은 2회 경감", () =>
+        {
+            // 치유사: 다친 동료가 있으면 플레이어를 때리지 않고 회복
+            var player = new Unit("P", 10000, 1, 100, 1, 0) { Accuracy = 1.0 };
+            var hurt = new Unit("H", 100, 1, 0, 5, 0) { Accuracy = 1.0 };
+            hurt.Hp = 30;
+            var healer = new Unit("힐러", 100, 50, 0, 9, 0) { Trait = MonsterTrait.Healer, Accuracy = 1.0 };
+            var b = new InteractiveBattle(player, new List<Unit> { hurt, healer }, new Rng(3),
+                new BattleOptions(), 0);
+            b.DoRound(PlayerActionType.Defend);
+            if (hurt.Hp <= 30) return false; // 회복됐어야 함
+
+            // 장갑: 첫 2회 타격 절반
+            var tank = new Unit("장갑", 1000, 1, 0, 1, 0) { Trait = MonsterTrait.Shielded, ShieldedHitsLeft = 2, Accuracy = 1.0 };
+            var atkr = new Unit("A", 1000, 100, 0, 10, 0) { Accuracy = 1.0 };
+            var b2 = new InteractiveBattle(atkr, new List<Unit> { tank }, new Rng(4), new BattleOptions(), 0);
+            b2.DoRound(PlayerActionType.Attack); // 절반
+            int afterFirst = 1000 - tank.Hp;
+            b2.DoRound(PlayerActionType.Attack); // 절반
+            b2.DoRound(PlayerActionType.Attack); // 온전
+            int third = 1000 - tank.Hp - afterFirst * 2;
+            return afterFirst > 0 && third >= afterFirst * 2 - 2;
+        });
+
+        Check("인화 콤보: 화상 5중첩 도달 시 폭발 (중첩×6, 화상 제거)", () =>
+        {
+            var u = new Unit("T", 1000, 10, 0, 10);
+            u.Statuses.Apply(StatusType.Burn, 5);
+            if (!u.Statuses.TryDetonateBurn(out int dmg)) return false;
+            if (dmg != 30) return false;
+            return !u.Statuses.Has(StatusType.Burn) && !u.Statuses.TryDetonateBurn(out _);
+        });
+
+        Check("소모품: 가방 사용/차감, 폭탄 피해 층 비례", () =>
+        {
+            var bag = new ConsumableBag { Charms = 1 };
+            if (!bag.TryUse(ConsumableType.ParityCharm)) return false;
+            if (bag.TryUse(ConsumableType.ParityCharm)) return false; // 소진
+            bag.Add(ConsumableType.Bomb, 2);
+            return bag.Count(ConsumableType.Bomb) == 2
+                && ConsumableBag.BombDamage(10) > ConsumableBag.BombDamage(1);
+        });
+
         Check("사망 시 소울스톤 페널티 적용", () =>
         {
             var died = Enumerable.Range(0, 2000)

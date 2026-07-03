@@ -52,7 +52,13 @@ namespace DiceDungeon.Core.Battle
                         actor.TakeDamage(dot);
                         if (!actor.IsAlive)
                         {
-                            if (actor != player) { result.MonstersKilled++; continue; }
+                            if (actor != player)
+                            {
+                                result.MonstersKilled++;
+                                if (!ResolveDeathTrait(actor, player, options, ref reviveLeft, result))
+                                    return Lost(result);
+                                continue;
+                            }
                             if (!TryRevive(player, options, ref reviveLeft, result)) return Lost(result);
                         }
                     }
@@ -60,15 +66,32 @@ namespace DiceDungeon.Core.Battle
 
                     if (actor == player)
                     {
-                        PlayerAct(player, monsters, skills, rng, options, ref shield, result);
+                        if (!PlayerAct(player, monsters, skills, rng, options, ref shield, ref reviveLeft, result))
+                            return Lost(result);
                     }
                     else
                     {
+                        // 치유사: 다친 동료가 있으면 공격 대신 회복
+                        if (actor.Trait == MonsterTrait.Healer)
+                        {
+                            var hurt = monsters.Where(m => m.IsAlive && m != actor && m.HpRatio < 0.6)
+                                               .OrderBy(m => m.HpRatio).FirstOrDefault();
+                            if (hurt != null)
+                            {
+                                hurt.HealRatio(0.12);
+                                continue;
+                            }
+                        }
+
                         int dmg = DamageCalc.Compute(actor, player, null, rng, 0, out _, out bool miss);
                         if (miss) continue;
+                        if (actor.Trait == MonsterTrait.Enrage && actor.HpRatio < 0.5)
+                            dmg = (int)(dmg * 1.4); // 광폭화
                         int absorbed = Math.Min(shield, dmg);
                         shield -= absorbed;
                         player.TakeDamage(dmg - absorbed);
+                        if (actor.Trait == MonsterTrait.Venomous && player.IsAlive)
+                            player.Statuses.Apply(StatusType.Poison); // 맹독
                         if (!player.IsAlive && !TryRevive(player, options, ref reviveLeft, result))
                             return Lost(result);
                     }
@@ -87,8 +110,9 @@ namespace DiceDungeon.Core.Battle
             return Lost(result); // 교착 = 패배 취급 (밸런스 경보용)
         }
 
-        private static void PlayerAct(Unit player, List<Unit> monsters, List<Skill> skills,
-                                      Rng rng, BattleOptions options, ref int shield, BattleResult result)
+        /// <returns>false = 플레이어 사망 (폭발 트레이트).</returns>
+        private static bool PlayerAct(Unit player, List<Unit> monsters, List<Skill> skills,
+                                      Rng rng, BattleOptions options, ref int shield, ref bool reviveLeft, BattleResult result)
         {
             // 1) 위험하면 회복/실드 스킬
             var sustain = skills.FirstOrDefault(s => s.Ready && (s.HealRatio > 0 || s.ShieldRatio > 0));
@@ -97,7 +121,7 @@ namespace DiceDungeon.Core.Battle
                 if (sustain.HealRatio > 0) player.HealRatio(sustain.HealRatio);
                 if (sustain.ShieldRatio > 0) shield += (int)(player.MaxHp * sustain.ShieldRatio);
                 sustain.CurrentCooldown = sustain.Cooldown;
-                return;
+                return true;
             }
 
             // 2) 최고 계수 공격 스킬 (속성 유불리는 AI가 모름 — 플레이어 학습 요소)
@@ -107,24 +131,46 @@ namespace DiceDungeon.Core.Battle
             bool aoe = attackSkill?.Aoe ?? false;
             if (attackSkill != null) attackSkill.CurrentCooldown = attackSkill.Cooldown;
 
+            // 타겟 우선순위: 치유사 > 저체력 (트레이트가 만드는 결정)
             var targets = aoe
                 ? monsters.Where(m => m.IsAlive).ToList()
-                : monsters.Where(m => m.IsAlive).OrderBy(m => m.Hp).Take(1).ToList();
+                : monsters.Where(m => m.IsAlive)
+                          .OrderBy(m => m.Trait == MonsterTrait.Healer ? 0 : 1)
+                          .ThenBy(m => m.Hp).Take(1).ToList();
 
             foreach (var target in targets)
             {
                 int dmg = DamageCalc.Compute(player, target, attackSkill, rng, options.CritBonus, out _, out bool miss);
                 if (miss) continue;
-                target.TakeDamage(dmg);
+                if (target.ShieldedHitsLeft > 0) { dmg /= 2; target.ShieldedHitsLeft--; } // 장갑
+                target.TakeDamage(Math.Max(1, dmg));
                 if (target.IsAlive)
                 {
                     if (attackSkill?.Applies != null)
                         target.Statuses.Apply(attackSkill.Applies.Value, attackSkill.ApplyStacks);
                     else if (options.BurnOnHit > 0 && rng.Chance(options.BurnOnHit))
                         target.Statuses.Apply(StatusType.Burn); // 발화 패시브
+                    if (target.Statuses.TryDetonateBurn(out int boom))
+                        target.TakeDamage(boom); // 인화: 화상 5중첩 폭발
                 }
-                if (!target.IsAlive) result.MonstersKilled++;
+                if (!target.IsAlive)
+                {
+                    result.MonstersKilled++;
+                    if (!ResolveDeathTrait(target, player, options, ref reviveLeft, result))
+                        return false;
+                }
             }
+            return player.IsAlive;
+        }
+
+        /// <summary>폭발 트레이트: 죽을 때 공격력 ×1.5 피해. 반환 false = 플레이어 사망.</summary>
+        private static bool ResolveDeathTrait(Unit dead, Unit player, BattleOptions options,
+                                              ref bool reviveLeft, BattleResult result)
+        {
+            if (dead.Trait != MonsterTrait.Explosive) return true;
+            player.TakeDamage((int)(dead.Atk * 1.5));
+            if (player.IsAlive) return true;
+            return TryRevive(player, options, ref reviveLeft, result);
         }
 
         private static bool TryRevive(Unit player, BattleOptions options, ref bool reviveLeft, BattleResult result)

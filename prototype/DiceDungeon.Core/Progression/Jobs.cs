@@ -46,7 +46,7 @@ namespace DiceDungeon.Core.Progression
         {
             switch (id)
             {
-                case CharacterId.Rogue: return new StatBlock(9, 8, 4, 2, 2, 5);
+                case CharacterId.Rogue: return new StatBlock(8, 8, 6, 2, 2, 4);
                 case CharacterId.Mage: return new StatBlock(2, 4, 4, 9, 6, 5);
                 case CharacterId.Cleric: return new StatBlock(4, 3, 7, 8, 4, 4);
                 default: return new StatBlock(9, 3, 9, 2, 4, 3); // 기사
