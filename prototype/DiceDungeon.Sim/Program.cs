@@ -349,6 +349,54 @@ static class SelfTest
                 && !sheet.CanJobChange; // 재전직 불가
         });
 
+        Check("장비: 생성 1만 개 유효성 (슬롯·등급·수치·전설 효과)", () =>
+        {
+            var rng = new Rng(99);
+            bool sawLegendary = false, sawDiceMod = false;
+            for (int i = 0; i < 10000; i++)
+            {
+                var item = EquipmentFactory.Generate(rng.Next(1, 16), rng);
+                if (item.Atk < 0 || item.Def < 0 || item.Hp < 0 || item.Crit < 0) return false;
+                if (item.Rarity == Rarity.Legendary)
+                {
+                    sawLegendary = true;
+                    if (item.Effect == UniqueEffect.None) return false; // 전설은 고유 효과 필수
+                }
+                if (item.DiceMod != DiceMod.None) sawDiceMod = true;
+            }
+            return sawLegendary && sawDiceMod;
+        });
+
+        Check("장비: 로드아웃은 점수 높은 것만 교체 장착", () =>
+        {
+            var loadout = new EquipmentLoadout();
+            var weak = new Equipment(EquipSlot.Weapon, Rarity.Common, "약검", atk: 3);
+            var strong = new Equipment(EquipSlot.Weapon, Rarity.Epic, "강검", atk: 20);
+            if (!loadout.TryEquip(weak)) return false;
+            if (!loadout.TryEquip(strong)) return false;
+            if (loadout.TryEquip(weak)) return false; // 하위품 거부
+            return loadout.TotalAtk == 20;
+        });
+
+        Check("주사위 장비: 조작 결과가 항상 유효한 눈 (1~6, 합 2~12)", () =>
+        {
+            var rng = new Rng(7);
+            var roller = new DiceRoller(rng.Derive());
+            foreach (DiceMod mod in Enum.GetValues(typeof(DiceMod)))
+            {
+                for (int i = 0; i < 5000; i++)
+                {
+                    var r = DiceModRules.Apply(roller.Roll(), mod, roller, rng);
+                    if (r.Die1 < 1 || r.Die1 > 6 || r.Die2 < 1 || r.Die2 > 6) return false;
+                    if (mod == DiceMod.NoOnes && (r.Die1 == 1 || r.Die2 == 1))
+                    {
+                        // NoOnes는 1을 한 번만 리롤 — 다시 1이 나올 수는 있음 (허용)
+                    }
+                }
+            }
+            return true;
+        });
+
         Check("사망 시 소울스톤 페널티 적용", () =>
         {
             var died = Enumerable.Range(0, 2000)

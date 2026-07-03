@@ -88,6 +88,7 @@ namespace DiceDungeon.Core.Run
         private int _potions;
         private int _gearCount;
         private bool _reviveLeft;
+        private readonly EquipmentLoadout _loadout = new EquipmentLoadout();
 
         public RunController(int seed, RunConfig config, IPlayerPolicy policy)
         {
@@ -169,6 +170,9 @@ namespace DiceDungeon.Core.Run
                     _result.DiceRolls++;
                 }
 
+                // 주사위 장비 효과 (운명 조작 — 01-게임기획서 4.3)
+                roll = DiceModRules.Apply(roll, _loadout.ActiveDiceMod, dice, _rng);
+
                 int next = position + roll.Sum;
                 bool lapComplete = next >= Balance.BoardSize;
                 position = next % Balance.BoardSize;
@@ -176,7 +180,9 @@ namespace DiceDungeon.Core.Run
                 if (lapComplete)
                 {
                     // 완주 보너스 → 보스 게이트 (프로토타입: 완주 즉시 보스전)
-                    _gold += (int)(Balance.LapBonusGold(floor) * _config.Mods.LapGoldMult);
+                    AddGold((int)(Balance.LapBonusGold(floor) * _config.Mods.LapGoldMult));
+                    if (_loadout.HasEffect(UniqueEffect.LapFullHeal))
+                        _player.Heal(_player.MaxHp); // 전설: 완주 시 전체 회복
                     return FightBoss(floor, roll, capturedThisFloor);
                 }
 
@@ -201,7 +207,7 @@ namespace DiceDungeon.Core.Run
                     if (!Fight(MakeMonsters(floor, elite), roll, captured, floor)) return false;
                     tile.Captured = true;
                     captured++;
-                    _gold += Balance.BattleGold(floor) * (elite ? 2 : 1);
+                    AddGold(Balance.BattleGold(floor) * (elite ? 2 : 1));
                     if (elite) AddGear(floor);
                     return true;
 
@@ -209,7 +215,7 @@ namespace DiceDungeon.Core.Run
                     if (_rng.Chance(Balance.MimicChance))
                         return Fight(MakeMonsters(floor, elite: false), roll, captured, floor); // 미믹 기습
                     if (_rng.Chance(0.5)) AddGear(floor);
-                    else _gold += Balance.TreasureGold(floor);
+                    else AddGold(Balance.TreasureGold(floor));
                     return true;
 
                 case TileType.Shop:
@@ -222,9 +228,13 @@ namespace DiceDungeon.Core.Run
                     return true;
 
                 case TileType.Trap:
-                    if (!_rng.Chance(Balance.TrapAvoidChance + _config.Mods.TrapAvoidBonus))
+                {
+                    double avoid = Balance.TrapAvoidChance + _config.Mods.TrapAvoidBonus
+                                   + (_loadout.HasEffect(UniqueEffect.TrapWard) ? 0.25 : 0);
+                    if (!_rng.Chance(avoid))
                         _player.TakeDamage((int)(_player.MaxHp * Balance.TrapDamageRatio));
                     return _player.IsAlive;
+                }
 
                 case TileType.Event:
                     ResolveEvent(floor);
@@ -243,7 +253,7 @@ namespace DiceDungeon.Core.Run
             if (_character.BestEventChoice && v >= 0.40 && v < 0.75)
                 v = _rng.NextDouble();
 
-            if (v < 0.40) _gold += Balance.TreasureGold(floor);
+            if (v < 0.40) AddGold(Balance.TreasureGold(floor));
             else if (v < 0.75) _player.TakeDamage((int)(_player.MaxHp * 0.08));
             else AddGear(floor);
         }
@@ -266,13 +276,28 @@ namespace DiceDungeon.Core.Run
             }
         }
 
+        /// <summary>장비 획득: 슬롯 4종·등급 5단계 (02-시스템설계 3.1). 하위품은 자동 매각.</summary>
         private void AddGear(int floor)
         {
             _gearCount++;
-            _sheet.GearAtk += Balance.GearAtkBonus(floor);
-            _sheet.GearDef += Balance.GearDefBonus(floor);
-            _sheet.GearHp += Balance.GearHpBonus(floor);
-            RefreshPlayer();
+            var item = EquipmentFactory.Generate(floor, _rng);
+            if (_loadout.TryEquip(item))
+            {
+                _loadout.ApplyTo(_sheet);
+                RefreshPlayer();
+            }
+            else
+            {
+                AddGold(10 + floor * 4); // 매각
+            }
+        }
+
+        /// <summary>골드 획득 단일 지점 — 전설 '골드 탐지' 효과 적용.</summary>
+        private void AddGold(int amount)
+        {
+            if (_loadout.HasEffect(UniqueEffect.GoldFind))
+                amount = (int)(amount * 1.25);
+            _gold += amount;
         }
 
         private List<Unit> MakeMonsters(int floor, bool elite)

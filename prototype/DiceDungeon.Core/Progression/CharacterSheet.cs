@@ -22,8 +22,9 @@ namespace DiceDungeon.Core.Progression
         public SkillBook Book { get; } = new SkillBook();
         public int UnspentStatPoints { get; private set; }
 
-        // 장비 누계 (런 내 파밍)
+        // 장비 합계 (EquipmentLoadout.ApplyTo가 기록)
         public int GearAtk, GearDef, GearHp;
+        public double GearCrit;
 
         private int _biasCursor;
 
@@ -137,7 +138,7 @@ namespace DiceDungeon.Core.Progression
                        + (int)Book.PassiveSum(pool, PassiveType.DefFlat);
             unit.Mdef = Stats.DeriveMdef() + GearDef / 2 + bonusDef / 2;
             unit.Spd = Stats.DeriveSpd();
-            unit.CritChance = Stats.DeriveCrit() + bonusCrit
+            unit.CritChance = Stats.DeriveCrit() + bonusCrit + GearCrit
                               + Book.PassiveSum(pool, PassiveType.CritPct);
             unit.Evasion = Stats.DeriveEvasion() + cls.Evasion
                            + Book.PassiveSum(pool, PassiveType.EvadePct);

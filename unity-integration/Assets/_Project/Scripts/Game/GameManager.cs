@@ -47,6 +47,7 @@ namespace DiceDungeon.Game
         private IReadOnlyList<Tile> _tiles;
         private int _floor, _position, _gold, _potions, _capturedThisFloor, _monstersKilled;
         private bool _reviveLeft, _rerollLeft;
+        private EquipmentLoadout _loadout;
         private readonly Queue<string> _log = new Queue<string>();
 
         public PlayerProfile Profile => _profile;
@@ -101,6 +102,7 @@ namespace DiceDungeon.Game
             _character = CharacterClass.Get(_selected);
             _mods = config.Mods;
             _sheet = new CharacterSheet(_selected);
+            _loadout = new EquipmentLoadout();
             _player = _sheet.BuildUnit(
                 config.BonusHp + _mods.BonusHp,
                 config.BonusAtk + _mods.BonusAtk,
@@ -178,6 +180,9 @@ namespace DiceDungeon.Game
                 roll = _dice.Roll();
                 Log("도적의 감: 낮은 눈을 다시 굴렸다!");
             }
+            var modded = DiceModRules.Apply(roll, _loadout.ActiveDiceMod, _dice, _rng);
+            if (modded.Sum != roll.Sum) Log("주사위 장비가 운명을 비틀었다");
+            roll = modded;
             for (float t = 0; t < 0.5f; t += 0.06f)
             {
                 DiceText.text = $"⚀ {_rng.Next(1, 7)} + {_rng.Next(1, 7)}";
@@ -194,7 +199,12 @@ namespace DiceDungeon.Game
             if (lap)
             {
                 int bonus = (int)(Balance.LapBonusGold(_floor) * _mods.LapGoldMult);
-                _gold += bonus;
+                AddGold(bonus);
+                if (_loadout.HasEffect(UniqueEffect.LapFullHeal))
+                {
+                    _player.Heal(_player.MaxHp);
+                    Log("전설 장비의 축복 — 완전 회복!");
+                }
                 Log($"한 바퀴 완주! +{bonus}G — 보스 게이트가 열린다");
                 RefreshHud();
                 yield return BattleRoutine(BossMonsters(), roll, isBoss: true);
@@ -227,7 +237,7 @@ namespace DiceDungeon.Game
                     _capturedThisFloor++;
                     Board.Paint(_position, tile);
                     int gold = Balance.BattleGold(_floor) * (elite ? 2 : 1);
-                    _gold += gold;
+                    AddGold(gold);
                     Log($"칸 점령! +{gold}G");
                     if (elite) AddGear();
                     break;
@@ -239,7 +249,7 @@ namespace DiceDungeon.Game
                         yield return BattleRoutine(MakeMonsters(false), roll, isBoss: false);
                     }
                     else if (_rng.Chance(0.5)) AddGear();
-                    else { int g = Balance.TreasureGold(_floor); _gold += g; Log($"보물 상자 +{g}G"); }
+                    else { int g = Balance.TreasureGold(_floor); AddGold(g); Log($"보물 상자 +{g}G"); }
                     break;
 
                 case TileType.Shop:
@@ -252,7 +262,8 @@ namespace DiceDungeon.Game
                     break;
 
                 case TileType.Trap:
-                    if (_rng.Chance(Balance.TrapAvoidChance + _mods.TrapAvoidBonus))
+                    if (_rng.Chance(Balance.TrapAvoidChance + _mods.TrapAvoidBonus
+                                    + (_loadout.HasEffect(UniqueEffect.TrapWard) ? 0.25 : 0)))
                         Log("함정을 피했다!");
                     else
                     {
@@ -399,7 +410,7 @@ namespace DiceDungeon.Game
             double v = _rng.NextDouble();
             if (_character.BestEventChoice && v >= 0.40 && v < 0.75)
                 v = _rng.NextDouble();
-            if (v < 0.40) { int g = Balance.TreasureGold(_floor); _gold += g; Log($"행운의 이벤트 +{g}G"); }
+            if (v < 0.40) { int g = Balance.TreasureGold(_floor); AddGold(g); Log($"행운의 이벤트 +{g}G"); }
             else if (v < 0.75)
             {
                 int dmg = (int)(_player.MaxHp * 0.08);
@@ -411,12 +422,25 @@ namespace DiceDungeon.Game
 
         private void AddGear()
         {
-            _player.Atk += Balance.GearAtkBonus(_floor);
-            _player.Def += Balance.GearDefBonus(_floor);
-            int hp = Balance.GearHpBonus(_floor);
-            _player.MaxHp += hp;
-            _player.Heal(hp);
-            Log("장비 획득! 강해졌다");
+            var item = EquipmentFactory.Generate(_floor, _rng);
+            if (_loadout.TryEquip(item))
+            {
+                _loadout.ApplyTo(_sheet);
+                RefreshPlayerFromSheet();
+                Log($"[{item.Rarity}] {item.Name} 장착!");
+            }
+            else
+            {
+                AddGold(10 + _floor * 4);
+                Log($"{item.Name} — 하위품이라 매각 (+{10 + _floor * 4}G)");
+            }
+        }
+
+        private void AddGold(int amount)
+        {
+            if (_loadout.HasEffect(UniqueEffect.GoldFind))
+                amount = (int)(amount * 1.25);
+            _gold += amount;
         }
 
         private List<Unit> MakeMonsters(bool elite)
