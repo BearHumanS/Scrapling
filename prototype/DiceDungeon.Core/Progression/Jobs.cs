@@ -38,7 +38,7 @@ namespace DiceDungeon.Core.Progression
     /// </summary>
     public static class JobCatalog
     {
-        public const int JobChangeLevel = 10;
+        public const int JobChangeLevel = 8;
         public const int SkillSlots = 3;
 
         // ---------- 1차 직업 초기 스탯 (합 30) 및 배분 편향 ----------
@@ -46,8 +46,8 @@ namespace DiceDungeon.Core.Progression
         {
             switch (id)
             {
-                case CharacterId.Rogue: return new StatBlock(6, 9, 4, 2, 4, 5);
-                case CharacterId.Mage: return new StatBlock(2, 4, 4, 11, 5, 4);
+                case CharacterId.Rogue: return new StatBlock(9, 8, 4, 2, 2, 5);
+                case CharacterId.Mage: return new StatBlock(2, 4, 4, 9, 6, 5);
                 case CharacterId.Cleric: return new StatBlock(4, 3, 7, 8, 4, 4);
                 default: return new StatBlock(9, 3, 9, 2, 4, 3); // 기사
             }
@@ -57,7 +57,7 @@ namespace DiceDungeon.Core.Progression
         {
             switch (id)
             {
-                case CharacterId.Rogue: return new[] { StatId.Agi, StatId.Str, StatId.Luk };
+                case CharacterId.Rogue: return new[] { StatId.Str, StatId.Agi, StatId.Luk };
                 case CharacterId.Mage: return new[] { StatId.Int, StatId.Vit, StatId.Dex };
                 case CharacterId.Cleric: return new[] { StatId.Int, StatId.Vit, StatId.Str };
                 default: return new[] { StatId.Str, StatId.Vit, StatId.Str };
@@ -76,16 +76,16 @@ namespace DiceDungeon.Core.Progression
 
         private static readonly List<SkillDef> RogueTree = new List<SkillDef>
         {
-            new SkillDef("rg_ambush", "급습", 5, cooldown: 3, coef: 1.3, coefPerLv: 0.15),
-            new SkillDef("rg_poison", "독칼", 5, cooldown: 2, coef: 0.7, coefPerLv: 0.08, applies: StatusType.Poison, stacksPerLv: 2),
-            new SkillDef("rg_flurry", "연속베기", 5, cooldown: 4, coef: 1.6, coefPerLv: 0.20),
+            new SkillDef("rg_ambush", "급습", 5, cooldown: 3, coef: 1.45, coefPerLv: 0.18),
+            new SkillDef("rg_poison", "독칼", 5, cooldown: 2, coef: 0.8, coefPerLv: 0.10, applies: StatusType.Poison, stacksPerLv: 3),
+            new SkillDef("rg_flurry", "연속베기", 5, cooldown: 4, coef: 1.7, coefPerLv: 0.25),
             new SkillDef("rg_sharp", "칼갈기", 3, passive: PassiveType.CritPct, passiveValue: 0.03),
             new SkillDef("rg_step", "경공", 3, passive: PassiveType.EvadePct, passiveValue: 0.03),
         };
 
         private static readonly List<SkillDef> MageTree = new List<SkillDef>
         {
-            new SkillDef("mg_fire", "화염구", 5, cooldown: 3, magic: true, element: Element.Fire, coef: 1.1, coefPerLv: 0.14, aoe: true, applies: StatusType.Burn, stacksPerLv: 1),
+            new SkillDef("mg_fire", "화염구", 5, cooldown: 3, magic: true, element: Element.Fire, coef: 1.0, coefPerLv: 0.12, aoe: true, applies: StatusType.Burn, stacksPerLv: 1),
             new SkillDef("mg_ice", "빙결탄", 5, cooldown: 2, magic: true, element: Element.Ice, coef: 0.9, coefPerLv: 0.11, applies: StatusType.Freeze, stacksPerLv: 1),
             new SkillDef("mg_blast", "마력 폭발", 5, cooldown: 5, magic: true, coef: 2.0, coefPerLv: 0.25),
             new SkillDef("mg_medit", "명상", 3, passive: PassiveType.MatkFlat, passiveValue: 3),
@@ -130,7 +130,7 @@ namespace DiceDungeon.Core.Progression
             new List<SkillDef>
             {
                 new SkillDef("as_venom", "맹독 인장", 5, cooldown: 3, coef: 1.0, coefPerLv: 0.10, applies: StatusType.Poison, stacksPerLv: 3, prereqId: "rg_poison", prereqLevel: 3),
-                new SkillDef("as_back", "백스탭", 5, cooldown: 4, coef: 2.0, coefPerLv: 0.25, prereqId: "rg_ambush", prereqLevel: 2),
+                new SkillDef("as_back", "백스탭", 5, cooldown: 4, coef: 2.3, coefPerLv: 0.28, prereqId: "rg_ambush", prereqLevel: 2),
                 new SkillDef("as_lethal", "치명", 3, passive: PassiveType.CritPct, passiveValue: 0.04),
             },
             new[] { StatId.Luk, StatId.Str, StatId.Agi, StatId.Agi });
@@ -151,7 +151,7 @@ namespace DiceDungeon.Core.Progression
             new StatBlock(0, 0, 2, 6, 2, 0),
             new List<SkillDef>
             {
-                new SkillDef("am_meteor", "메테오", 5, cooldown: 5, magic: true, element: Element.Fire, coef: 2.2, coefPerLv: 0.30, aoe: true, applies: StatusType.Burn, stacksPerLv: 2, prereqId: "mg_fire", prereqLevel: 3),
+                new SkillDef("am_meteor", "메테오", 5, cooldown: 5, magic: true, element: Element.Fire, coef: 2.0, coefPerLv: 0.25, aoe: true, applies: StatusType.Burn, stacksPerLv: 2, prereqId: "mg_fire", prereqLevel: 3),
                 new SkillDef("am_surge", "마력 격류", 3, passive: PassiveType.MatkFlat, passiveValue: 4),
                 new SkillDef("am_quake", "대지 붕괴", 5, cooldown: 4, magic: true, element: Element.Earth, coef: 1.7, coefPerLv: 0.20),
             },
@@ -184,7 +184,7 @@ namespace DiceDungeon.Core.Progression
             new StatBlock(0, 0, 4, 4, 0, 2),
             new List<SkillDef>
             {
-                new SkillDef("hp_heal", "대치유", 5, cooldown: 4, healBase: 0.25, healPerLv: 0.05, prereqId: "cl_bless", prereqLevel: 3),
+                new SkillDef("hp_heal", "대치유", 5, cooldown: 4, healBase: 0.20, healPerLv: 0.04, prereqId: "cl_bless", prereqLevel: 3),
                 new SkillDef("hp_resur", "소생의 빛", 1, passive: PassiveType.ReviveBoost, passiveValue: 1),
                 new SkillDef("hp_ray", "성광", 5, cooldown: 3, magic: true, element: Element.Holy, coef: 1.4, coefPerLv: 0.16),
             },

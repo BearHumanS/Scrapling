@@ -11,6 +11,14 @@ namespace DiceDungeon.Core.Battle
         public int Def { get; set; }
         public int Spd { get; set; }
         public double CritChance { get; set; }
+        /// <summary>마법 공격/방어 (07-심화시스템 1). 기본값: 물리와 동일/절반.</summary>
+        public int Matk { get; set; }
+        public int Mdef { get; set; }
+        /// <summary>회피·명중 (AGI/DEX 파생 + 패시브).</summary>
+        public double Evasion { get; set; }
+        public double Accuracy { get; set; } = 0.9;
+        /// <summary>방어 속성 (몬스터: 층 테마, 플레이어: 무속성).</summary>
+        public Element Element { get; set; } = Element.Neutral;
 
         public bool IsAlive => Hp > 0;
         public double HpRatio => MaxHp <= 0 ? 0 : (double)Hp / MaxHp;
@@ -26,6 +34,8 @@ namespace DiceDungeon.Core.Battle
             Def = def;
             Spd = spd;
             CritChance = critChance;
+            Matk = atk;
+            Mdef = def;
         }
 
         public void TakeDamage(int amount) => Hp = Math.Max(0, Hp - amount);

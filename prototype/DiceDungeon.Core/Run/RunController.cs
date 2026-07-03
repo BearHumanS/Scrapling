@@ -6,6 +6,7 @@ using DiceDungeon.Core.Board;
 using DiceDungeon.Core.Characters;
 using DiceDungeon.Core.Data;
 using DiceDungeon.Core.Meta;
+using DiceDungeon.Core.Progression;
 
 namespace DiceDungeon.Core.Run
 {
@@ -13,6 +14,8 @@ namespace DiceDungeon.Core.Run
     public sealed class RunConfig
     {
         public CharacterId Character = CharacterId.Knight;
+        /// <summary>전직 자동 선택 (시뮬레이션): true = A경로(공격), false = B경로(유틸).</summary>
+        public bool PreferPathA = true;
         public RelicModifiers Mods = new RelicModifiers();
 
         // 훈련소 보정 (PlayerProfile.Trained* 를 넣는다)
@@ -76,8 +79,9 @@ namespace DiceDungeon.Core.Run
         private readonly IPlayerPolicy _policy;
         private readonly RunConfig _config;
         private readonly CharacterClass _character;
+        private readonly CharacterSheet _sheet;
         private readonly Unit _player;
-        private readonly List<Skill> _skills;
+        private List<Skill> _skills;
         private readonly RunResult _result = new RunResult();
 
         private int _gold;
@@ -91,17 +95,26 @@ namespace DiceDungeon.Core.Run
             _policy = policy;
             _config = config;
             _character = CharacterClass.Get(config.Character);
-            _player = new Unit(
-                _character.Name,
-                _character.Hp + config.BonusHp + config.Mods.BonusHp,
-                _character.Atk + config.BonusAtk + config.Mods.BonusAtk,
-                _character.Def + config.BonusDef + config.Mods.BonusDef,
-                _character.Spd,
-                _character.CritChance + config.Mods.BonusCrit);
-            _skills = _character.Skills.Select(s => s.Instance()).ToList();
+            _sheet = new CharacterSheet(config.Character);
+            _sheet.AutoLearnSkills(); // 시작 스킬 1개
+            _player = _sheet.BuildUnit(
+                config.BonusHp + config.Mods.BonusHp,
+                config.BonusAtk + config.Mods.BonusAtk,
+                config.BonusDef + config.Mods.BonusDef,
+                config.Mods.BonusCrit);
+            _skills = _sheet.EquipSkills();
             _gold = config.Mods.StartGold;
             _potions = 2 + config.Mods.StartPotions;
             _reviveLeft = _character.RevivePerRun;
+        }
+
+        private void RefreshPlayer()
+        {
+            _sheet.Refresh(_player,
+                _config.BonusHp + _config.Mods.BonusHp,
+                _config.BonusAtk + _config.Mods.BonusAtk,
+                _config.BonusDef + _config.Mods.BonusDef,
+                _config.Mods.BonusCrit);
         }
 
         public RunResult Play()
@@ -185,7 +198,7 @@ namespace DiceDungeon.Core.Run
                         return true;
                     }
                     bool elite = tile.Type == TileType.Elite;
-                    if (!Fight(MakeMonsters(floor, elite), roll, captured)) return false;
+                    if (!Fight(MakeMonsters(floor, elite), roll, captured, floor)) return false;
                     tile.Captured = true;
                     captured++;
                     _gold += Balance.BattleGold(floor) * (elite ? 2 : 1);
@@ -194,7 +207,7 @@ namespace DiceDungeon.Core.Run
 
                 case TileType.Treasure:
                     if (_rng.Chance(Balance.MimicChance))
-                        return Fight(MakeMonsters(floor, elite: false), roll, captured); // 미믹 기습
+                        return Fight(MakeMonsters(floor, elite: false), roll, captured, floor); // 미믹 기습
                     if (_rng.Chance(0.5)) AddGear(floor);
                     else _gold += Balance.TreasureGold(floor);
                     return true;
@@ -256,11 +269,10 @@ namespace DiceDungeon.Core.Run
         private void AddGear(int floor)
         {
             _gearCount++;
-            _player.Atk += Balance.GearAtkBonus(floor);
-            _player.Def += Balance.GearDefBonus(floor);
-            int hp = Balance.GearHpBonus(floor);
-            _player.MaxHp += hp;
-            _player.Heal(hp);
+            _sheet.GearAtk += Balance.GearAtkBonus(floor);
+            _sheet.GearDef += Balance.GearDefBonus(floor);
+            _sheet.GearHp += Balance.GearHpBonus(floor);
+            RefreshPlayer();
         }
 
         private List<Unit> MakeMonsters(int floor, bool elite)
@@ -268,14 +280,15 @@ namespace DiceDungeon.Core.Run
             int hp = Balance.MonsterHp(floor);
             int atk = Balance.MonsterAtk(floor);
             int def = Balance.MonsterDef(floor);
+            var element = ElementTable.FloorElement(floor); // 층 테마 = 방어 속성
             if (elite)
-                return new List<Unit> { new Unit("Elite", (int)(hp * 1.8), (int)(atk * 1.3), def, 9) };
+                return new List<Unit> { new Unit("Elite", (int)(hp * 1.8), (int)(atk * 1.3), def, 9) { Element = element } };
 
             // 튜토리얼 구간(1~2층)은 1마리 고정, 이후 1~2마리
             int count = floor <= Balance.SoloMonsterFloors ? 1 : _rng.Next(1, 3);
             var list = new List<Unit>();
             for (int i = 0; i < count; i++)
-                list.Add(new Unit("Mob", hp, atk, def, 8));
+                list.Add(new Unit("Mob", hp, atk, def, 8) { Element = element });
             return list;
         }
 
@@ -285,11 +298,12 @@ namespace DiceDungeon.Core.Run
                 "Boss",
                 (int)(Balance.MonsterHp(floor) * Balance.BossHpMult),
                 (int)(Balance.MonsterAtk(floor) * Balance.BossAtkMult),
-                Balance.MonsterDef(floor), 9);
-            return Fight(new List<Unit> { boss }, roll, captured);
+                Balance.MonsterDef(floor), 9)
+            { Element = ElementTable.FloorElement(floor) };
+            return Fight(new List<Unit> { boss }, roll, captured, floor, isBoss: true);
         }
 
-        private bool Fight(List<Unit> monsters, DiceResult roll, int captured)
+        private bool Fight(List<Unit> monsters, DiceResult roll, int captured, int floor, bool isBoss = false)
         {
             if (_policy.UsePotion(_player.HpRatio, _potions))
             {
@@ -298,16 +312,19 @@ namespace DiceDungeon.Core.Run
             }
 
             // 보드-전투 연동 (02-시스템설계 1.3):
-            // 더블 = 선제공격, 럭키세븐 = 크리 +15%, 점령 칸 수 = 시작 실드 (기사는 2배)
+            // 더블 = 선제공격, 럭키세븐 = 크리 +15%, 점령 칸 실드 (기사 ×2, 가디언 요새화 ×3)
+            int perTile = 2 * (_character.DoubleCaptureShield ? 2 : 1)
+                            * (_sheet.HasCaptureShieldTriple ? 3 : 1);
             var options = new BattleOptions
             {
                 CritBonus = roll.IsLuckySeven ? 0.15 : 0,
                 PlayerFirst = roll.IsDouble,
-                StartShield = captured * (_character.DoubleCaptureShield ? 4 : 2)
+                StartShield = captured * perTile
                               + (int)(_player.MaxHp * _character.BarrierRatio), // 마법사: 마력 방벽
                 Skills = _skills,
                 ReviveAvailable = _reviveLeft,
-                Evasion = _character.Evasion, // 도적: 회피
+                ReviveRatio = _sheet.HasReviveBoost ? 0.7 : 0.5,
+                BurnOnHit = _sheet.BurnOnHitChance,
             };
             var result = BattleSimulator.Fight(_player, monsters, _rng.Derive(), options);
 
@@ -317,7 +334,27 @@ namespace DiceDungeon.Core.Run
                 _result.ReviveUsed = true;
             }
             _result.MonstersKilled += result.MonstersKilled;
-            return result.PlayerWon;
+            if (!result.PlayerWon) return false;
+
+            GainBattleXp(result.MonstersKilled, floor, isBoss);
+            return true;
+        }
+
+        /// <summary>경험치 → 레벨업(스탯 자동 배분·스킬 학습) → 전직 (07-심화시스템 5).</summary>
+        private void GainBattleXp(int kills, int floor, bool isBoss)
+        {
+            int xp = kills * Balance.MonsterXp(floor) * (isBoss ? Balance.BossXpMult : 1);
+            if (_sheet.GainXp(xp) <= 0) return;
+
+            if (_sheet.CanJobChange)
+            {
+                var (a, b) = JobCatalog.PathsFor(_config.Character);
+                _sheet.JobChange(_config.PreferPathA ? a : b);
+            }
+            _sheet.AutoAllocateStats();
+            _sheet.AutoLearnSkills();
+            RefreshPlayer();
+            _skills = _sheet.EquipSkills();
         }
     }
 }

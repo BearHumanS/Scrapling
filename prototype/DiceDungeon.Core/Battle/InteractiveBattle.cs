@@ -9,7 +9,7 @@ namespace DiceDungeon.Core.Battle
 
     public enum BattleEventType
     {
-        PlayerHit, MonsterHit, Miss, ShieldAbsorb, Heal, StatusApplied,
+        PlayerHit, MonsterHit, Miss, PlayerMiss, ShieldAbsorb, ShieldGain, Heal, StatusApplied,
         StatusTick, Stunned, MonsterDied, PlayerDied, Revived, Victory, Defeat
     }
 
@@ -83,7 +83,7 @@ namespace DiceDungeon.Core.Battle
             switch (action)
             {
                 case PlayerActionType.Attack:
-                    PlayerStrike(events, coef: 1.0, aoe: false, applies: null, stacks: 0);
+                    PlayerStrike(events, null);
                     break;
 
                 case PlayerActionType.Defend:
@@ -104,15 +104,24 @@ namespace DiceDungeon.Core.Battle
                     if (!CanUseSkill(skillIndex)) break;
                     var skill = _skills[skillIndex];
                     skill.CurrentCooldown = skill.Cooldown;
-                    if (skill.HealRatio > 0)
+                    if (skill.HealRatio > 0 || skill.ShieldRatio > 0)
                     {
-                        int heal = (int)(Player.MaxHp * skill.HealRatio);
-                        Player.Heal(heal);
-                        events.Add(new BattleEvent(BattleEventType.Heal, Player, Player, heal));
+                        if (skill.HealRatio > 0)
+                        {
+                            int heal = (int)(Player.MaxHp * skill.HealRatio);
+                            Player.Heal(heal);
+                            events.Add(new BattleEvent(BattleEventType.Heal, Player, Player, heal));
+                        }
+                        if (skill.ShieldRatio > 0)
+                        {
+                            int gain = (int)(Player.MaxHp * skill.ShieldRatio);
+                            Shield += gain;
+                            events.Add(new BattleEvent(BattleEventType.ShieldGain, Player, Player, gain));
+                        }
                     }
                     else
                     {
-                        PlayerStrike(events, skill.Coef, skill.Aoe, skill.Applies, skill.ApplyStacks);
+                        PlayerStrike(events, skill);
                     }
                     break;
             }
@@ -144,13 +153,12 @@ namespace DiceDungeon.Core.Battle
                         continue;
                     }
 
-                    if (_options.Evasion > 0 && _rng.Chance(_options.Evasion))
+                    int dmg = DamageCalc.Compute(m, Player, null, _rng, 0, out _, out bool monsterMiss);
+                    if (monsterMiss)
                     {
                         events.Add(new BattleEvent(BattleEventType.Miss, m, Player));
                         continue;
                     }
-
-                    int dmg = Damage(m, Player, 1.0, 0, out _);
                     if (_defending) dmg = Math.Max(1, dmg / 2);
                     int absorbed = Math.Min(Shield, dmg);
                     if (absorbed > 0)
@@ -167,7 +175,7 @@ namespace DiceDungeon.Core.Battle
                         {
                             _reviveLeft = false;
                             ReviveUsed = true;
-                            Player.Hp = Player.MaxHp / 2;
+                            Player.Hp = (int)(Player.MaxHp * _options.ReviveRatio);
                             events.Add(new BattleEvent(BattleEventType.Revived, Player, Player, Player.Hp));
                         }
                         else
@@ -190,21 +198,35 @@ namespace DiceDungeon.Core.Battle
             return events;
         }
 
-        private void PlayerStrike(List<BattleEvent> events, double coef, bool aoe, StatusType? applies, int stacks)
+        private void PlayerStrike(List<BattleEvent> events, Skill skill)
         {
+            bool aoe = skill?.Aoe ?? false;
             var targets = aoe
                 ? _monsters.Where(m => m.IsAlive).ToList()
                 : _monsters.Where(m => m.IsAlive).OrderBy(m => m.Hp).Take(1).ToList();
 
             foreach (var t in targets)
             {
-                int dmg = Damage(Player, t, coef, _options.CritBonus, out bool crit);
+                int dmg = DamageCalc.Compute(Player, t, skill, _rng, _options.CritBonus, out bool crit, out bool miss);
+                if (miss)
+                {
+                    events.Add(new BattleEvent(BattleEventType.PlayerMiss, Player, t));
+                    continue;
+                }
                 t.TakeDamage(dmg);
                 events.Add(new BattleEvent(BattleEventType.PlayerHit, Player, t, dmg, crit));
-                if (t.IsAlive && applies != null)
+                if (t.IsAlive)
                 {
-                    t.Statuses.Apply(applies.Value, Math.Max(1, stacks));
-                    events.Add(new BattleEvent(BattleEventType.StatusApplied, Player, t));
+                    if (skill?.Applies != null)
+                    {
+                        t.Statuses.Apply(skill.Applies.Value, Math.Max(1, skill.ApplyStacks));
+                        events.Add(new BattleEvent(BattleEventType.StatusApplied, Player, t));
+                    }
+                    else if (_options.BurnOnHit > 0 && _rng.Chance(_options.BurnOnHit))
+                    {
+                        t.Statuses.Apply(StatusType.Burn);
+                        events.Add(new BattleEvent(BattleEventType.StatusApplied, Player, t));
+                    }
                 }
                 if (!t.IsAlive)
                 {
@@ -225,12 +247,5 @@ namespace DiceDungeon.Core.Battle
             return Over;
         }
 
-        private int Damage(Unit attacker, Unit defender, double coef, double critBonus, out bool crit)
-        {
-            double dmg = attacker.Atk * coef * (100.0 / (100.0 + defender.Def));
-            crit = _rng.Chance(attacker.CritChance + critBonus);
-            if (crit) dmg *= Balance.CritMultiplier;
-            return Math.Max(1, (int)Math.Round(dmg));
-        }
     }
 }

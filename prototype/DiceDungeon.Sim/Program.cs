@@ -7,6 +7,7 @@ using DiceDungeon.Core.Board;
 using DiceDungeon.Core.Characters;
 using DiceDungeon.Core.Data;
 using DiceDungeon.Core.Meta;
+using DiceDungeon.Core.Progression;
 using DiceDungeon.Core.Run;
 
 // 밸런스 시뮬레이터 (03-기술설계 5).
@@ -20,6 +21,7 @@ using DiceDungeon.Core.Run;
 if (args.Contains("selftest")) { SelfTest.RunAll(); return; }
 if (args.Contains("meta")) { Simulation.MetaProgression(); return; }
 if (args.Contains("chars")) { Simulation.CharacterCompare(); return; }
+if (args.Contains("jobs")) { Simulation.JobCompare(); return; }
 if (args.Contains("economy")) { Simulation.Economy(); return; }
 Simulation.Baseline(runs: 1000);
 
@@ -44,6 +46,26 @@ static class Simulation
                 $"| {results.Count(r => r.DeathFloor > 0) * 100.0 / results.Count,5:F1}% " +
                 $"| {results.Average(r => r.Soulstones),12:F0} " +
                 $"| {results.Count(r => r.ReviveUsed) * 100.0 / results.Count,9:F1}%");
+        }
+    }
+
+    /// <summary>2차 직업 8경로 밸런스 — 평균 도달 층 ±15% 이내 목표 (07-심화시스템 6).</summary>
+    public static void JobCompare()
+    {
+        Console.WriteLine("=== 전직 경로 밸런스 비교 (800런/경로, 메타 0) ===\n");
+        Console.WriteLine("경로           | 평균층 | 사망률");
+        Console.WriteLine("---------------|--------|-------");
+        foreach (var c in CharacterClass.All)
+        {
+            var (a, b) = JobCatalog.PathsFor(c.Id);
+            foreach (bool preferA in new[] { true, false })
+            {
+                var results = RunMany(800,
+                    new RunConfig { Character = c.Id, PreferPathA = preferA }, baseSeed: 1234);
+                string name = preferA ? a.Name : b.Name;
+                Console.WriteLine($"{name,-12} | {results.Average(r => r.FloorsCleared),6:F2} " +
+                    $"| {results.Count(r => r.DeathFloor > 0) * 100.0 / results.Count,5:F1}%");
+            }
         }
     }
 
@@ -210,7 +232,7 @@ static class SelfTest
             u.Statuses.Apply(StatusType.Stun);
             var (dmg1, skip1) = u.Statuses.Tick(u);
             var (dmg2, skip2) = u.Statuses.Tick(u);
-            return dmg1 == 6 && skip1 && dmg2 == 6 && !skip2;
+            return dmg1 == 9 && skip1 && dmg2 == 9 && !skip2; // 독 3중첩 × 3
         });
 
         Check("성직자: 부활 패시브는 런당 1회만", () =>
@@ -256,8 +278,8 @@ static class SelfTest
         {
             int TakeHit(bool defend)
             {
-                var player = new Unit("P", 1000, 1, 100, 1, 0); // 못 죽이는 탱커
-                var mob = new List<Unit> { new Unit("M", 10000, 50, 0, 9) };
+                var player = new Unit("P", 1000, 1, 100, 1, 0) { Accuracy = 1.0 }; // 못 죽이는 탱커
+                var mob = new List<Unit> { new Unit("M", 10000, 50, 0, 9, critChance: 0) { Accuracy = 1.0 } };
                 var b = new InteractiveBattle(player, mob, new Rng(11), new BattleOptions(), 0);
                 b.DoRound(defend ? PlayerActionType.Defend : PlayerActionType.Attack);
                 return 1000 - player.Hp;
@@ -280,6 +302,51 @@ static class SelfTest
             b.DoRound(PlayerActionType.Attack);
             b.DoRound(PlayerActionType.Attack);
             return b.CanUseSkill(0);                       // 3라운드 후 회복
+        });
+
+        Check("속성표: 삼각 상성 + 신성↔암흑 + 무속성 중립", () =>
+        {
+            return ElementTable.Multiplier(Element.Fire, Element.Earth) == 1.5
+                && ElementTable.Multiplier(Element.Earth, Element.Fire) == 0.75
+                && ElementTable.Multiplier(Element.Earth, Element.Ice) == 1.5
+                && ElementTable.Multiplier(Element.Ice, Element.Fire) == 1.5
+                && ElementTable.Multiplier(Element.Holy, Element.Shadow) == 2.0
+                && ElementTable.Multiplier(Element.Shadow, Element.Holy) == 2.0
+                && ElementTable.Multiplier(Element.Fire, Element.Fire) == 0.5
+                && ElementTable.Multiplier(Element.Neutral, Element.Fire) == 1.0;
+        });
+
+        Check("스킬트리: 선행 조건 강제 (강타 Lv3 → 플레임 슬래시)", () =>
+        {
+            var book = new SkillBook { Points = 10 };
+            var blow = JobCatalog.BaseTree(CharacterId.Knight).First(s => s.Id == "kn_blow");
+            var flame = JobCatalog.RuneKnight.Tree.First(s => s.Id == "rk_flame");
+            if (book.CanLearn(flame)) return false;         // 선행 미충족
+            book.Learn(blow); book.Learn(blow); book.Learn(blow);
+            return book.CanLearn(flame) && book.Learn(flame);
+        });
+
+        Check("레벨업: 경험치 곡선·포인트 지급 (스탯+3, 스킬+1)", () =>
+        {
+            var sheet = new CharacterSheet(CharacterId.Knight);
+            int skillPointsBefore = sheet.Book.Points;
+            int gained = sheet.GainXp(CharacterSheet.XpToLevel(1));
+            return gained == 1 && sheet.Level == 2
+                && sheet.UnspentStatPoints == 3
+                && sheet.Book.Points == skillPointsBefore + 1;
+        });
+
+        Check("전직: 레벨 10 도달 시 가능, 보너스 스탯 +10", () =>
+        {
+            var sheet = new CharacterSheet(CharacterId.Mage);
+            while (sheet.Level < JobCatalog.JobChangeLevel)
+                sheet.GainXp(CharacterSheet.XpToLevel(sheet.Level));
+            if (!sheet.CanJobChange) return false;
+            int before = sheet.Stats.Total;
+            sheet.JobChange(JobCatalog.Archmage);
+            return sheet.Advanced == JobCatalog.Archmage
+                && sheet.Stats.Total == before + 10
+                && !sheet.CanJobChange; // 재전직 불가
         });
 
         Check("사망 시 소울스톤 페널티 적용", () =>

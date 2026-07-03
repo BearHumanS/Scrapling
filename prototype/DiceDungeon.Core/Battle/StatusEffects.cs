@@ -41,10 +41,11 @@ namespace DiceDungeon.Core.Battle
             int damage = 0;
             bool skip = false;
 
+            // 도트는 고정 피해 (v4: 최대 HP 비례는 깊은 층에서 무한 스케일링되어 폐기)
             if (_entries.TryGetValue(StatusType.Burn, out var burn))
-                damage += Math.Max(1, (int)(owner.MaxHp * 0.03)) * burn.Stacks;
+                damage += 4 * burn.Stacks;
             if (_entries.TryGetValue(StatusType.Poison, out var poison))
-                damage += 2 * poison.Stacks;
+                damage += 3 * poison.Stacks;
             if (_entries.ContainsKey(StatusType.Stun))
             {
                 skip = true;

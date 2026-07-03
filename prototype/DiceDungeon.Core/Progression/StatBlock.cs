@@ -50,7 +50,7 @@ namespace DiceDungeon.Core.Progression
         // 파생 수치 (스탯 1당 효과)
         public int DeriveMaxHp() => 70 + Vit * 8;
         public int DeriveAtk() => 8 + Str;
-        public int DeriveMatk() => 8 + (int)(Int * 1.2);
+        public int DeriveMatk() => 8 + Int;
         public int DeriveDef() => 2 + (int)(Vit * 0.3);
         public int DeriveMdef() => (int)(Int * 0.5);
         public int DeriveSpd() => 8 + (int)(Agi * 0.5);

@@ -37,6 +37,10 @@ namespace DiceDungeon.Core.Data
         // 층 클리어 보상: 회복 (하강 결정을 실질적 선택지로 만들기 위함)
         public const double FloorClearHealRatio = 0.35;
 
+        // 경험치 (07-심화시스템 5): 처치당, 보스 배율
+        public static int MonsterXp(int floor) => 5 + floor * 3;
+        public const int BossXpMult = 5;
+
         // 타일 생성 비율 (01-게임기획서 4.1)
         public const double TileBattleRatio = 0.50;
         public const double TileEliteRatio = 0.08;
