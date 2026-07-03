@@ -1,7 +1,7 @@
-/* 다이스 던전 v0.6.0 — 서비스 워커: index.html 캐시-퍼스트 오프라인 플레이 */
+/* 다이스 던전 v0.7.0 — 서비스 워커: index.html 캐시-퍼스트 오프라인 플레이 */
 'use strict';
 
-const CACHE = 'dice-dungeon-v0.6.0';
+const CACHE = 'dice-dungeon-v0.7.0';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', event => {
