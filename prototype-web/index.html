@@ -310,6 +310,10 @@ button:disabled { opacity:.4; cursor:default; }
   min-width:58px; min-height:40px; border-radius:10px; font-size:12.5px; font-weight:800; flex-shrink:0;
   background:linear-gradient(180deg,#2e7a4f,#1e5236); border:1px solid #6cc094; color:#d2f5df;
 }
+/* v8 감사 B1: 장착/해제 토글 */
+.sk-btn.eq { min-width:52px; background:linear-gradient(180deg,#31527a,#24405f); border-color:#4a7cc0; color:#cfe6ff; }
+.sk-btn.eq.on { background:linear-gradient(180deg,#3a3355,#2a2542); border-color:#4c4472; color:#b8aef5; }
+.sk-btnCol { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
 
 /* 전투 */
 .enemyRow { display:flex; gap:8px; justify-content:center; margin:6px 0 4px; }
@@ -652,8 +656,15 @@ const B = {
   POTION_HEAL: 0.40,
   START_POTIONS: 2,
 
-  soulstonesForRun: (floors, kills) => floors * 10 + kills,
-  DEATH_PENALTY: 0.7,
+  // 런 결산 (v8 — 감사 A1 대응: "도전이 보상받지 못함" 수정, Balance.cs v8 블록 이식)
+  // 층 가치는 깊을수록 증가 (층 i = 3+3i, 누적 trunc(3f + 1.5f(f+1))):
+  //   f=3→27, f=5→60, f=8→132, f=10→195, f=15→405
+  // 사망 페널티(×0.7)는 킬 보상에만 — 도달층 보상은 업적으로 전액 보존
+  floorSoulstones: f => Math.trunc(3 * f + 1.5 * f * (f + 1)),
+  soulstonesForRun: (floors, kills, died) =>
+    Math.trunc(3 * floors + 1.5 * floors * (floors + 1))
+    + Math.trunc(kills * (died ? 0.7 : 1.0)),
+  DEATH_PENALTY: 0.7, // 사망 시 킬 보상 70%만 회수
 
   JOB_CHANGE_LEVEL: 8,   // JobCatalog.JobChangeLevel
   SKILL_SLOTS: 3         // JobCatalog.SkillSlots
@@ -904,7 +915,7 @@ const UNIQUE_EFFECTS = { // 전설 등급 고유 효과 3종
 };
 /* EquipmentFactory.RollRarity: 층 비례 (전설은 5층부터) */
 function rollRarity(floor) {
-  const v = Math.random();
+  const v = rngNext();
   const legendary = floor >= 5 ? 0.02 + floor * 0.004 : 0;
   const epic = 0.05 + floor * 0.008;
   const rare = 0.15 + floor * 0.01;
@@ -1220,6 +1231,7 @@ function newSheet(charId) {
     level: 1, xp: 0,
     stats: Object.assign({}, CHARS[charId].base),
     learned: {},                          // skillId -> level
+    equippedIds: [],                      // v8 감사 B1: 수동 장착 (비면 자동 폴백) — CharacterSheet.EquippedIds
     points: 1,                            // 시작 스킬 1개
     statPoints: 0,
     gearAtk: 0, gearDef: 0, gearHp: 0, gearCrit: 0 // EquipmentLoadout.ApplyTo가 기록
@@ -1290,7 +1302,27 @@ function equipScore(def, lv) {
   return (def.coef + def.coefPerLv * (lv - 1)) * (def.aoe ? 1.3 : 1)
        + (def.healBase + def.healPerLv * (lv - 1)) * 2;
 }
+/* v8 감사 B1 (CharacterSheet.ToggleEquip 이식): 장착 토글.
+ * 반환 = 변경 여부 (미학습·패시브·슬롯 초과 시 false). */
+function toggleEquip(sheet, skillId) {
+  const ids = sheet.equippedIds;
+  const at = ids.indexOf(skillId);
+  if (at >= 0) { ids.splice(at, 1); return true; }
+  if (ids.length >= B.SKILL_SLOTS) return false;
+  const def = skillPool(sheet).find(d => d.id === skillId && !isPassive(d));
+  if (!def || levelOf(sheet, skillId) <= 0) return false;
+  ids.push(skillId);
+  return true;
+}
+/* v8 감사 B1 (CharacterSheet.EquipSkills 이식): 수동 선택이 하나라도 있으면
+ * 그것만 장착 (3개 미만이어도 — 학습 취소된 항목은 정리), 없으면 자동(계수순) 폴백.
+ * 자동 장착이 저계수 정체성 스킬(예: 맹독 인장)을 영구 벤치시키는 문제 수정. */
 function equipActives(sheet) {
+  const manual = skillPool(sheet)
+    .filter(d => sheet.equippedIds.includes(d.id) && levelOf(sheet, d.id) > 0 && !isPassive(d))
+    .slice(0, B.SKILL_SLOTS)
+    .map(d => instantiateSkill(d, levelOf(sheet, d.id)));
+  if (manual.length > 0) return manual;
   return skillPool(sheet)
     .filter(d => !isPassive(d) && levelOf(sheet, d.id) > 0)
     .sort((a, b) => equipScore(b, levelOf(sheet, b.id)) - equipScore(a, levelOf(sheet, a.id)))
@@ -1404,8 +1436,24 @@ function skillIcon(def) {
  * 공용 헬퍼 + 메타 저장 (스키마 v2 마이그레이션)
  * ===================================================================== */
 const $ = id => document.getElementById(id);
-const randInt = (min, maxExcl) => min + Math.floor(Math.random() * (maxExcl - min));
-const chance = p => Math.random() < p;
+
+/* ----- 시드 RNG (v8 — C4): 게임플레이 난수는 전부 이 mulberry32를 지난다.
+ * 내부 상태가 32비트 정수 하나라 런 스냅샷에 그대로 직렬화·복원 가능 —
+ * 복원 후 굴림 시퀀스가 "탭이 안 죽었을 때"와 완전히 동일해진다.
+ * 연출 전용 난수(주사위 굴림 애니메이션 등)는 cosmeticInt로 분리해
+ * 타이머 횟수가 게임플레이 시퀀스를 오염시키지 않게 한다. */
+let rngState = (Math.random() * 0x100000000) >>> 0;
+function rngNext() { // mulberry32
+  rngState = (rngState + 0x6D2B79F5) >>> 0;
+  let t = rngState;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+function reseedRng() { rngState = (Math.random() * 0x100000000) >>> 0; }
+const randInt = (min, maxExcl) => min + Math.floor(rngNext() * (maxExcl - min));
+const chance = p => rngNext() < p;
+const cosmeticInt = (min, maxExcl) => min + Math.floor(Math.random() * (maxExcl - min));
 
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1512,6 +1560,150 @@ function loadMeta() {
 }
 function saveMeta() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch (e) { /* private mode */ }
+}
+
+/* =====================================================================
+ * v8 — C4: 런 중 저장/복원 (모바일 탭 킬 = 런 소실 문제)
+ * 안전 지점(타일 처리 완료 · 층 전환 · 랩 선택 후 · 필드 소모품 사용)에서만
+ * 스냅샷을 남긴다. 전투 중엔 저장하지 않는다 — 복원하면 그 전투는 미발생 상태.
+ * RNG 내부 상태(rngState)까지 직렬화해 복원 후 굴림 시퀀스가 끊기지 않는다.
+ * ===================================================================== */
+const RUN_KEY = 'diceDungeonRun_v1';
+const RUN_SNAP_VERSION = 1;
+function saveRunSnapshot() {
+  if (!run || !run.alive) return;
+  try {
+    const sh = run.sheet;
+    localStorage.setItem(RUN_KEY, JSON.stringify({
+      v: RUN_SNAP_VERSION,
+      rng: rngState >>> 0,
+      charId: run.charId, asc: run.asc | 0,
+      floor: run.floor, floorsCleared: run.floorsCleared,
+      pos: run.pos, laps: run.laps, extraLaps: run.extraLaps,
+      gold: run.gold, potions: run.potions,
+      kills: run.kills, gearCount: run.gearCount, diceRolls: run.diceRolls,
+      bag: run.bag, charmParity: run.charmParity || null,
+      loadout: run.loadout,
+      rerollLeft: !!run.rerollLeft, reviveLeft: !!run.reviveLeft,
+      hp: run.player.hp, st: run.player.st,
+      cds: run.skills.map(s => ({ id: s.defId, cur: s.cur })), // 스킬 쿨다운
+      tiles: run.tiles.map(t => ({ type: t.type, captured: !!t.captured })),
+      sheet: {
+        job: sh.job, advanced: sh.advanced || null,
+        level: sh.level, xp: sh.xp,
+        stats: sh.stats, learned: sh.learned, equippedIds: sh.equippedIds,
+        points: sh.points, statPoints: sh.statPoints,
+        gearAtk: sh.gearAtk, gearDef: sh.gearDef, gearHp: sh.gearHp, gearCrit: sh.gearCrit
+      }
+    }));
+  } catch (e) { /* private mode — 저장 실패해도 플레이는 계속 */ }
+}
+function loadRunSnapshot() {
+  try {
+    const raw = localStorage.getItem(RUN_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function clearRunSnapshot() {
+  try { localStorage.removeItem(RUN_KEY); } catch (e) { /* no-op */ }
+}
+/* 복원 — 무결성 검증 후 런 재구성. 실패 시 false (호출부가 스냅샷을 버리고
+ * 마을로 보낸다: 런만 포기, 프로필은 보존). */
+function restoreRun(s) {
+  try {
+    if (!s || s.v !== RUN_SNAP_VERSION) return false;
+    if (!CHARS[s.charId]) return false;
+    const shp = s.sheet;
+    if (!shp || !CHARS[shp.job] || (shp.advanced && !PATHS[shp.advanced])) return false;
+    if (!shp.stats || STAT_IDS.some(k => typeof shp.stats[k] !== 'number')) return false;
+    if (!shp.learned || typeof shp.learned !== 'object' || Array.isArray(shp.learned)) return false;
+    if (!Array.isArray(shp.equippedIds)) return false;
+    if (typeof s.floor !== 'number' || s.floor < 1 || s.floor > B.FINAL_FLOOR) return false;
+    if (typeof s.pos !== 'number' || s.pos < 0 || s.pos >= B.BOARD_SIZE) return false;
+    if (typeof s.gold !== 'number' || typeof s.potions !== 'number') return false;
+    if (typeof s.hp !== 'number' || s.hp <= 0) return false;
+    if (typeof s.rng !== 'number') return false;
+    if (!s.bag || CONSUM_KEYS.some(k => typeof s.bag[k] !== 'number')) return false;
+    if (!s.loadout || typeof s.loadout !== 'object') return false;
+    if (!Array.isArray(s.tiles) || s.tiles.length !== B.BOARD_SIZE) return false;
+    if (s.tiles.some(t => !t || !TILE_DEFS[t.type])) return false;
+
+    const sheet = {
+      job: shp.job, advanced: shp.advanced || null,
+      level: Math.max(1, shp.level | 0), xp: Math.max(0, shp.xp | 0),
+      stats: {}, learned: {},
+      equippedIds: shp.equippedIds.filter(id => typeof id === 'string').slice(0, B.SKILL_SLOTS),
+      points: Math.max(0, shp.points | 0), statPoints: Math.max(0, shp.statPoints | 0),
+      gearAtk: shp.gearAtk | 0, gearDef: shp.gearDef | 0,
+      gearHp: shp.gearHp | 0, gearCrit: +shp.gearCrit || 0
+    };
+    for (const k of STAT_IDS) sheet.stats[k] = shp.stats[k] | 0;
+    const pool = skillPool(sheet);
+    for (const id of Object.keys(shp.learned)) {
+      const def = pool.find(d => d.id === id);
+      if (!def) return false; // 모르는 스킬 id = 손상
+      sheet.learned[id] = Math.max(1, Math.min(def.maxLv, shp.learned[id] | 0));
+    }
+
+    const bn = runBonus();
+    const loadout = { weapon: null, armor: null, accessory: null, dice: null };
+    for (const k of SLOT_KEYS) {
+      const e = s.loadout[k];
+      if (e && typeof e === 'object') {
+        loadout[k] = Object.assign(
+          { slot: k, rarity: 0, atk: 0, def: 0, hp: 0, crit: 0, diceMod: null, effect: null, name: '?' }, e);
+      }
+    }
+    const player = buildUnit(sheet, bn);
+    player.hp = Math.max(1, Math.min(player.maxHp, s.hp | 0));
+    player.st = (s.st && typeof s.st === 'object' && !Array.isArray(s.st)) ? s.st : {};
+
+    run = {
+      charId: s.charId, sheet, bonus: bn, mods: bn.mods,
+      asc: Math.max(0, Math.min(ASC_MAX, s.asc | 0)),
+      floor: s.floor | 0, floorsCleared: Math.max(0, s.floorsCleared | 0),
+      gold: Math.max(0, s.gold | 0),
+      potions: Math.max(0, s.potions | 0),
+      kills: Math.max(0, s.kills | 0),
+      gearCount: Math.max(0, s.gearCount | 0),
+      diceRolls: Math.max(0, s.diceRolls | 0),
+      bag: { charm: Math.max(0, s.bag.charm | 0), bomb: Math.max(0, s.bag.bomb | 0), smoke: Math.max(0, s.bag.smoke | 0) },
+      charmParity: s.charmParity === 'odd' || s.charmParity === 'even' ? s.charmParity : null,
+      loadout,
+      pos: s.pos | 0,
+      tiles: s.tiles.map((t, i) => ({ index: i, type: t.type, captured: !!t.captured })),
+      capturedThisFloor: 0,
+      laps: Math.max(0, s.laps | 0),
+      extraLaps: Math.max(0, s.extraLaps | 0),
+      rerollLeft: !!s.rerollLeft,
+      reviveLeft: !!s.reviveLeft,
+      alive: true,
+      player,
+      skills: equipActives(sheet)
+    };
+    run.capturedThisFloor = run.tiles.filter(t => t.captured).length;
+    if (Array.isArray(s.cds)) { // 스킬 쿨다운 복원
+      for (const c of s.cds) {
+        const sk = run.skills.find(x => x.defId === (c && c.id));
+        if (sk && typeof c.cur === 'number') sk.cur = Math.max(0, Math.min(sk.cooldown, c.cur | 0));
+      }
+    }
+    rngState = s.rng >>> 0; // RNG 연속성: 저장 시점 이후 시퀀스가 그대로 이어진다
+
+    logs = [];
+    lapPending = null;
+    bt = null;
+    showScreen('run');
+    renderBoard();
+    placeToken(false);
+    updateCenter();
+    log('💾 이어서 모험! ' + run.floor + '층 ' + themeOf(run.floor).name + '에서 재개했다.');
+    if (run.extraLaps > 0) log('🔥 위험도 ' + run.extraLaps + ' 유지 중.');
+    busy = false;
+    uiMode = 'idle';
+    updateHUD();
+    return true;
+  } catch (e) { return false; }
 }
 
 /* =====================================================================
@@ -1707,6 +1899,7 @@ let busy = false; // 입력 잠금 (연출 중)
 let uiMode = 'title'; // title|town|idle|anim|lapchoice|battle|levelup|jobchange|skilltree|shop|event|floorclear|ending|result|settings|stats|credits|wipe1|wipe2
 
 function startRun() {
+  reseedRng(); // 새 런 = 새 시드 (C4: 이후 상태는 스냅샷으로 직렬화)
   const bn = runBonus();
   const sheet = newSheet(meta.selected);
   autoLearnSkills(sheet); // 시작 스킬 1개 (RunController 생성자와 동일)
@@ -1740,6 +1933,7 @@ function startRun() {
   busy = false;
   uiMode = 'idle';
   updateHUD();
+  saveRunSnapshot(); // C4: 런 시작 직후부터 복원 가능
   tutShow(0); // 튜토리얼 ①: 주사위 굴리기
 }
 function refreshPlayer() {
@@ -1751,7 +1945,7 @@ function reequip() {
 
 /* ===== 층 생성 ===== */
 function rollTileType() {
-  const v = Math.random();
+  const v = rngNext();
   let acc = B.TILE_BATTLE;
   if (v < acc) return 'battle';
   acc += B.TILE_ELITE;
@@ -1976,6 +2170,7 @@ function useFieldPotion() {
   run.potions--;
   healRatio(B.POTION_HEAL, '포션 사용!');
   updateHUD();
+  if (uiMode === 'idle') saveRunSnapshot(); // C4: 필드 상태 변화도 안전 지점
 }
 
 /* ===== v5 소모품: 홀짝 부적 — 굴리기 전에 눌러 홀/짝 선택 → 이번 굴림 강제 ===== */
@@ -1986,6 +2181,7 @@ function tapCharm() {
     run.charmParity = null;
     log('🔮 부적 사용을 취소했다.');
     updateHUD();
+    saveRunSnapshot(); // C4
     return;
   }
   if (run.bag.charm <= 0) return;
@@ -2008,6 +2204,7 @@ function charmPick(parity) {
   if (uiMode === 'charm') { closeOverlay(); uiMode = 'idle'; }
   log('🔮 홀짝 부적! 이번 굴림은 <b>' + (parity === 'even' ? '짝수' : '홀수') + '</b>로 강제된다.');
   setBusy(false);
+  if (uiMode === 'idle') saveRunSnapshot(); // C4: 부적 장전 상태까지 보존
 }
 function charmCancel() {
   if (uiMode !== 'charm') return;
@@ -2029,8 +2226,9 @@ function rollDice() {
   d1El.classList.add('rolling');
   d2El.classList.add('rolling');
   const tick = setInterval(() => {
-    d1El.textContent = randInt(1, 7);
-    d2El.textContent = randInt(1, 7);
+    // 연출 전용 난수 — 시드 RNG를 소비하면 복원 후 시퀀스가 어긋난다 (C4)
+    d1El.textContent = cosmeticInt(1, 7);
+    d2El.textContent = cosmeticInt(1, 7);
   }, T.DICE_TICK);
 
   setTimeout(() => {
@@ -2155,6 +2353,7 @@ function lapChoiceBoss() {
   lapPending = null;
   closeOverlay();
   uiMode = 'anim';
+  saveRunSnapshot(); // C4: 랩 선택 후 (보스전 자체는 저장 안 함 — 복원 시 보스전 미발생)
   log('👑 보스 게이트에 들어섰다!');
   setTimeout(() => startBossBattle(info), dur(450));
 }
@@ -2169,6 +2368,7 @@ function lapChoiceMore() {
       dangerMult(run.extraLaps).toFixed(2) + ', 완주 보너스 +' +
       Math.round(B.LAP_REWARD_MULT * run.extraLaps * 100) + '%');
   updateHUD();
+  saveRunSnapshot(); // C4: 랩 선택 후 (남은 눈 이동은 복원 시 미발생 — 출발점에서 재개)
   setTimeout(() => moveSteps(info, remaining), dur(320));
 }
 
@@ -2179,6 +2379,7 @@ function endTurn() {
   if (!run || !run.alive) return;
   uiMode = 'idle';
   setBusy(false);
+  saveRunSnapshot(); // C4: 타일 처리 완료 = 안전 지점
 }
 
 function resolveTile(info) {
@@ -2231,7 +2432,7 @@ function resolveTile(info) {
         return;
       }
       // v5: 장비 40% / 골드 35% / 소모품 25% (RunController.ResolveTile Treasure)
-      const v2 = Math.random();
+      const v2 = rngNext();
       if (v2 < 0.40) addGear();
       else if (v2 < 0.75) addGold(B.treasureGold(f), '보물 상자!');
       else {
@@ -3187,6 +3388,9 @@ function openSkillTree(inChain) {
 function renderSkillTree(inChain) {
   const sh = run.sheet;
   const equipped = new Set(equipActives(sh).map(s => s.defId));
+  // v8 감사 B1: 수동 장착 카운트 (학습 취소된 잔여 id 제외)
+  const manualN = sh.equippedIds.filter(id => levelOf(sh, id) > 0).length;
+  const slotsFull = manualN >= B.SKILL_SLOTS;
   const section = (title, defs) =>
     '<div class="tree-sec">' + title + '</div>' +
     defs.map(def => {
@@ -3195,6 +3399,16 @@ function renderSkillTree(inChain) {
         ? '🔒 선행: ' + (skillPool(sh).find(d => d.id === def.prereqId) || { name: def.prereqId }).name + ' Lv.' + def.prereqLv + ' 필요'
         : '';
       const learnable = canLearn(sh, def);
+      const learnBtn = lv >= def.maxLv
+        ? '<button class="sk-btn" disabled>MAX</button>'
+        : '<button class="sk-btn" onclick="learnSk(\'' + def.id + '\')"' + (learnable ? '' : ' disabled') + '>배우기</button>';
+      // v8 감사 B1: 배운 액티브에 [장착/해제] 토글 (패시브 제외, 최대 3)
+      let eqBtn = '';
+      if (!isPassive(def) && lv > 0) {
+        const isManual = sh.equippedIds.includes(def.id);
+        eqBtn = '<button class="sk-btn eq' + (isManual ? ' on' : '') + '" onclick="toggleEq(\'' + def.id + '\')"' +
+          (!isManual && slotsFull ? ' disabled' : '') + '>' + (isManual ? '해제' : '장착') + '</button>';
+      }
       return '<div class="sk-row' + (lockText ? ' locked' : '') + '">' +
         '<div class="sk-icon">' + skillIcon(def) + '</div>' +
         '<div class="sk-body">' +
@@ -3203,15 +3417,15 @@ function renderSkillTree(inChain) {
           '<div class="sk-desc">' + skillDesc(def, lv || 1) + '</div>' +
           (lockText ? '<div class="sk-lock">' + lockText + '</div>' : '') +
         '</div>' +
-        (lv >= def.maxLv
-          ? '<button class="sk-btn" disabled>MAX</button>'
-          : '<button class="sk-btn" onclick="learnSk(\'' + def.id + '\')"' + (learnable ? '' : ' disabled') + '>배우기</button>') +
+        '<div class="sk-btnCol">' + learnBtn + eqBtn + '</div>' +
       '</div>';
     }).join('');
 
   let html =
     '<div class="m-title">📖 캐릭터 — ' + jobName(sh) + '</div>' +
-    '<div class="tree-pts">스킬 포인트 <b>' + sh.points + '</b> (액티브는 계수 상위 ' + B.SKILL_SLOTS + '개 자동 장착)</div>' +
+    '<div class="tree-pts">스킬 포인트 <b>' + sh.points + '</b> · 장착: ' +
+      (manualN > 0 ? '<b>수동 ' + manualN + '/' + B.SKILL_SLOTS + '</b>' : '<b>자동</b> (계수 상위 ' + B.SKILL_SLOTS + '개)') +
+      '</div>' +
     section('1차 — ' + CHARS[sh.job].name, BASE_TREES[sh.job]);
   if (sh.advanced) html += section('2차 — ' + PATHS[sh.advanced].name, PATHS[sh.advanced].tree);
   // 장비 v2: 현재 장착 4슬롯 (등급 색상)
@@ -3235,6 +3449,16 @@ function learnSk(id) {
   const def = skillPool(sh).find(d => d.id === id);
   if (!def || !learnSkill(sh, def)) return;
   log('📖 ' + def.name + ' Lv.' + levelOf(sh, id) + ' 습득!');
+  renderSkillTree(progressionDone != null);
+}
+/* v8 감사 B1: 스킬트리에서 장착/해제 토글 — 즉시 전투 슬롯에 반영 */
+function toggleEq(id) {
+  const sh = run.sheet;
+  if (!toggleEquip(sh, id)) return;
+  reequip();
+  const manual = sh.equippedIds.includes(id);
+  log(manual ? '⭐ ' + (skillPool(sh).find(d => d.id === id) || { name: id }).name + ' 수동 장착!'
+             : '📗 장착 해제' + (sh.equippedIds.length === 0 ? ' — 자동(계수순)으로 복귀' : ''));
   renderSkillTree(progressionDone != null);
 }
 function closeTree() {
@@ -3277,8 +3501,8 @@ function floorClear() {
       '<div class="row"><span>몬스터 HP / 공격</span><span>' + B.monsterHp(nf) + ' / ' + B.monsterAtk(nf) + '</span></div>' +
       '<div class="row"><span>현재 예상 소울스톤</span><span>💠 ' + calcStones(false) + '</span></div>' +
     '</div>' +
-    '<button class="m-btn danger" onclick="descend()">⬇️ 하강 — 더 큰 보상, 사망 시 70%만 회수</button>' +
-    '<button class="m-btn gold" onclick="retreat()">🏠 귀환 — 소울스톤 100% 회수</button>'
+    '<button class="m-btn danger" onclick="descend()">⬇️ 하강 — 깊을수록 층 보상 증가, 사망해도 보존</button>' +
+    '<button class="m-btn gold" onclick="retreat()">🏠 귀환 — 처치 보상까지 100% 회수</button>'
   );
   tutShow(4); // 튜토리얼 ⑤: 하강/귀환 선택
 }
@@ -3300,17 +3524,23 @@ function die() {
   SFX.death();
   endRun(true, false);
 }
-/* 소울스톤: (층×10 + 킬) × 영혼 수확기 × 어센션(+10%/Lv), 사망 시 70% (RunController.Play) */
-function calcStones(died) {
-  let stones = B.soulstonesForRun(run.floorsCleared, run.kills) * run.mods.soulMult * ascSoulMult(run.asc);
-  if (died) stones *= B.DEATH_PENALTY;
-  return Math.trunc(stones);
+/* 소울스톤 (v8 — 감사 A1, RunController.Play):
+ * (층 도달 보상 trunc(3f+1.5f(f+1)) + 킬 보상 — 사망 시 킬 보상만 ×0.7)
+ * × 영혼 수확기 × 어센션(+10%/Lv)은 기존대로 총액에 곱연산.
+ * 도달층 보상은 사망해도 전액 보존 — "도전이 보상받지 못함" 수정. */
+function stoneBreakdown(died) {
+  const floorPart = B.floorSoulstones(run.floorsCleared);
+  const killPart = Math.trunc(run.kills * (died ? B.DEATH_PENALTY : 1.0));
+  const mult = run.mods.soulMult * ascSoulMult(run.asc);
+  return { floorPart, killPart, mult, total: Math.trunc((floorPart + killPart) * mult) };
 }
+function calcStones(died) { return stoneBreakdown(died).total; }
 
 /* ===== v6: 15층 클리어 → 엔딩 연출 + 어센션 +1 (영구) ===== */
 function victory() {
   uiMode = 'ending';
   setBusy(true);
+  clearRunSnapshot(); // C4: 어센션이 영구 반영되는 시점 — 복원으로 보스전을 되감을 수 없게
   const prevAsc = meta.ascension | 0;
   meta.clears15 = (meta.clears15 | 0) + 1;
   if (prevAsc < ASC_MAX) meta.ascension = prevAsc + 1;
@@ -3342,13 +3572,15 @@ function endingOk() {
 function endRun(died, victory) {
   setBusy(true);
   uiMode = 'result';
-  const stones = calcStones(died);
+  clearRunSnapshot(); // C4: 사망·귀환·클리어 — 어떤 종료든 진행 중 런 스냅샷 삭제
+  const bd = stoneBreakdown(died);
+  const stones = bd.total;
   run.pendingStones = stones;
   run.died = died;
 
   const title = victory ? '🏆 심연 정복!' : died ? '💀 사망...' : '🏠 귀환 완료';
   const sub = victory ? '15층 최종 보스를 쓰러뜨렸다! 런 승리!'
-    : died ? run.floor + '층에서 쓰러졌다. 소울스톤 70%만 회수한다.'
+    : died ? run.floor + '층에서 쓰러졌다. 처치 보상은 70%만 — 층 도달 보상은 전액 보존된다.'
     : '무사히 마을로 돌아왔다. 소울스톤 100% 회수!';
 
   overlay(
@@ -3361,10 +3593,17 @@ function endRun(died, victory) {
       '<div class="row"><span>획득 장비</span><span>' + run.gearCount + '개</span></div>' +
       '<div class="row"><span>주사위 굴림</span><span>' + run.diceRolls + '회</span></div>' +
       '<div class="row"><span>골드 (런 종료 시 소멸)</span><span>💰 ' + run.gold + '</span></div>' +
+      // v8 감사 A1: 층 도달 / 처치 보상 분리 표시 — 사망 감액은 처치 보상에만
+      '<div class="row"><span>🏰 층 도달 보상 (' + run.floorsCleared + '층)</span><span>💠 ' + bd.floorPart +
+        (died ? ' <span style="color:#7ee787;font-size:11px">보존</span>' : '') + '</span></div>' +
+      '<div class="row"><span>⚔️ 처치 보상 (' + run.kills + '마리)</span><span>💠 ' + bd.killPart +
+        (died ? ' <span style="color:#ff8a7a;font-size:11px">(사망 ×0.7)</span>' : '') + '</span></div>' +
+      (run.mods.soulMult > 1 ? '<div class="row"><span>🌾 영혼 수확기</span><span>💠 +' +
+        Math.round((run.mods.soulMult - 1) * 100) + '%</span></div>' : '') +
       (run.asc > 0 ? '<div class="row"><span>🔥 어센션 ' + run.asc + ' 보상 보너스</span><span>💠 +' +
         Math.round((ascSoulMult(run.asc) - 1) * 100) + '%</span></div>' : '') +
       '<div class="row"><span><b>소울스톤 획득</b></span><span><b style="color:#8fd0ff">💠 +' + stones +
-        (died ? ' (70%)' : '') + '</b></span></div>' +
+        '</b></span></div>' +
     '</div>' +
     '<button class="m-btn gold" onclick="backToTown()">🏰 마을로 돌아가기</button>'
   );
@@ -3388,25 +3627,39 @@ function backToTown() {
 /* =====================================================================
  * PART F (v6) — 타이틀 / 설정 / 통계 / 크레딧 / 튜토리얼 / 배포 마무리
  * ===================================================================== */
-const VERSION = 'v0.7.0';
+const VERSION = 'v0.8.0';
 
 /* ----- 타이틀 화면 ----- */
 function renderTitle() {
   $('titleVer').textContent = VERSION + ' · 데이터는 이 기기에만 저장됩니다';
   const first = meta.totalRuns === 0 && meta.soul === 0 && meta.bestFloor === 0;
+  const snap = loadRunSnapshot(); // C4: 진행 중 런 표시
+  const snapLine = snap && typeof snap.floor === 'number'
+    ? '<br><b style="color:#ffd76a">⏳ 진행 중인 런</b> — ' + snap.floor + '층에서 이어서 모험!'
+    : '';
   $('titleCont').innerHTML = first
-    ? '주사위를 굴려 던전 보드를 돌고, 싸우고, 점령하라.<br>죽어도 <b>💠 소울스톤</b>은 남는다 — 마을에서 더 강해져라.'
+    ? '주사위를 굴려 던전 보드를 돌고, 싸우고, 점령하라.<br>죽어도 <b>💠 소울스톤</b>은 남는다 — 마을에서 더 강해져라.' + snapLine
     : '<b>이어서 모험하기</b><br>💠 <b>' + meta.soul + '</b> · 최고 <b>' + meta.bestFloor + '층</b> · 총 ' + meta.totalRuns + '런' +
+      snapLine +
       (meta.ascension > 0
         ? '<br><span class="title-asc">🔥 어센션 ' + meta.ascension + ' — 몬스터 HP +' +
           Math.round((ascHpMult(meta.ascension) - 1) * 100) + '% · 공격 +' +
           Math.round((ascAtkMult(meta.ascension) - 1) * 100) + '%</span>'
         : '');
   const startBtn = $('btnTitleStart');
-  if (startBtn) startBtn.textContent = first ? '⚔️ 모험 시작' : '⚔️ 모험 계속하기';
+  if (startBtn) startBtn.textContent = (first && !snap) ? '⚔️ 모험 시작' : '⚔️ 모험 계속하기';
 }
 function titleStart() {
   SFX.unlock();
+  // C4: 진행 중 런이 있으면 복원 — 손상(파스 실패·필드 누락)이면 스냅샷만 버리고 마을로 (프로필 보존)
+  let raw = null;
+  try { raw = localStorage.getItem(RUN_KEY); } catch (e) { /* no-op */ }
+  if (raw) {
+    let snap = null;
+    try { snap = JSON.parse(raw); } catch (e) { snap = null; } // 파스 실패 = 손상
+    if (snap && restoreRun(snap)) return;
+    clearRunSnapshot(); // 런만 포기, 프로필(메타)은 보존
+  }
   uiMode = 'town';
   renderTown();
   showScreen('town');
@@ -3467,6 +3720,7 @@ function wipeAsk2() { // 2단계 확인
 }
 function wipeDo() {
   try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* no-op */ }
+  clearRunSnapshot(); // C4: 진행 중 런 스냅샷도 함께 삭제
   meta = defaultMeta();
   saveMeta();
   applySpeed();
@@ -3523,7 +3777,7 @@ const TUT_STEPS = [
   { target: 'btActions', text: '⚔️ 전투! <b>공격 · 스킬 · 방어 · 포션</b> 중 하나를 골라요.<br>스킬이 더 강하지만 쿨다운이 있어요.' },
   { target: 'board',    text: '🚩 전투에서 이긴 칸은 <b>점령</b>돼요.<br>다시 밟으면 회복되고, 점령이 많을수록 전투 시작 실드가 커져요.' },
   { target: 'bcHint',   text: '👑 <b>출발점을 지나면</b> 완주 보너스를 받고 <b>보스에 도전</b>하거나 <b>한 바퀴 더</b> 돌 수 있어요.<br>한 바퀴 더 = 내 땅 회복·파밍 기회, 대신 몬스터가 <b>+28%</b>씩 강해져요!' },
-  { target: 'modalBox', text: '⬇️ <b>하강</b> — 더 깊이, 더 큰 보상. 단, 죽으면 소울스톤 70%만.<br>🏠 <b>귀환</b> — 지금까지 모은 소울스톤 100% 확보. 당신의 선택!' }
+  { target: 'modalBox', text: '⬇️ <b>하강</b> — 깊을수록 층 보상이 커져요. <b>층 도달 보상은 죽어도 보존</b>, 처치 보상만 70%로 줄어요.<br>🏠 <b>귀환</b> — 처치 보상까지 100% 확보. 당신의 선택!' }
 ];
 let tutStep = -1; // 현재 표시 중인 단계 (-1 = 없음)
 function tutShow(step) {
@@ -3617,7 +3871,13 @@ window.DD = {
   makeMonsters, makeBoss, migrateMeta, defaultMeta,
   // v7: 심연의 부름 — 위험도·랩 선택
   dangerMult,
-  get lapPending() { return lapPending; }
+  get lapPending() { return lapPending; },
+  // v8: 감사 P0 — 심층 보상 곡선(A1) · 수동 장착(B1) · 런 저장/복원(C4)
+  stoneBreakdown, calcStones, toggleEquip, equipScore,
+  saveRunSnapshot, loadRunSnapshot, clearRunSnapshot, restoreRun, RUN_KEY,
+  get rngState() { return rngState; },
+  set rngState(v) { rngState = v >>> 0; },
+  rngNext
 };
 
 window.addEventListener('resize', () => {
