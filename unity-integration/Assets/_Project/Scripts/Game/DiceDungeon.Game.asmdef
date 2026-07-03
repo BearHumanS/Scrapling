@@ -1,0 +1,16 @@
+{
+    "name": "DiceDungeon.Game",
+    "rootNamespace": "DiceDungeon.Game",
+    "references": [
+        "DiceDungeon.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
