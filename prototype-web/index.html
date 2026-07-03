@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>다이스 던전 — 프로토타입 v5</title>
+<title>다이스 던전</title>
+<meta name="description" content="주사위로 던전을 도는 보드 × 로그라이트 RPG. 굴리고, 싸우고, 점령하고, 더 깊이 내려가라.">
+<meta property="og:title" content="다이스 던전">
+<meta property="og:description" content="주사위로 던전을 도는 보드 × 로그라이트 RPG — 브라우저에서 바로 플레이. 죽어도 소울스톤은 남는다.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ko_KR">
+<meta name="theme-color" content="#171226">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20512%20512'%3E%3Crect%20x='32'%20y='32'%20width='448'%20height='448'%20rx='96'%20fill='%23171226'%20stroke='%23ffd76a'%20stroke-width='24'/%3E%3Ccircle%20cx='160'%20cy='160'%20r='44'%20fill='%23ffd76a'/%3E%3Ccircle%20cx='352'%20cy='160'%20r='44'%20fill='%23ffd76a'/%3E%3Ccircle%20cx='256'%20cy='256'%20r='44'%20fill='%23ffd76a'/%3E%3Ccircle%20cx='160'%20cy='352'%20r='44'%20fill='%23ffd76a'/%3E%3Ccircle%20cx='352'%20cy='352'%20r='44'%20fill='%23ffd76a'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html,body { height:100%; }
@@ -411,16 +419,127 @@ button:disabled { opacity:.4; cursor:default; }
   12%  { opacity:1; margin-top:0; }
   100% { opacity:0; margin-top:-46px; }
 }
+
+/* ===== v6: 타이틀 화면 ===== */
+#screen-title { align-items:center; justify-content:center; gap:15px; padding:32px 22px; text-align:center; }
+.logo-dice { font-size:62px; line-height:1; animation:logoFloat 3s ease-in-out infinite; filter:drop-shadow(0 8px 18px rgba(255,180,60,.35)); }
+@keyframes logoFloat { 0%,100%{transform:translateY(0) rotate(-6deg);} 50%{transform:translateY(-9px) rotate(6deg);} }
+.logo-text {
+  font-size:44px; font-weight:900; letter-spacing:7px; margin-left:7px; color:#ffd76a;
+  text-shadow:0 4px 22px rgba(255,180,60,.45), 0 2px 0 #7a5410;
+}
+.logo-sub { font-size:12px; color:#9a92b5; letter-spacing:2px; margin-top:6px; }
+.logo-ver { font-size:12px; color:#585174; font-weight:700; letter-spacing:1px; }
+.title-cont { width:100%; max-width:320px; font-size:13.5px; color:#c9c2e2; line-height:1.8;
+  background:rgba(30,25,48,.6); border:1px solid #2d2747; border-radius:13px; padding:11px 13px; }
+.title-cont b { color:#8fd0ff; }
+.title-asc { color:#ff9a6a; font-weight:800; }
+#btnTitleStart {
+  width:100%; max-width:320px; min-height:60px; border-radius:16px; font-size:19px; font-weight:800; letter-spacing:1px;
+  background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703;
+  box-shadow:0 6px 18px rgba(240,184,67,.3), inset 0 1px 0 rgba(255,255,255,.4);
+}
+#btnTitleStart:active { transform:scale(.98); }
+.title-row { display:flex; gap:8px; width:100%; max-width:320px; }
+.title-row button {
+  flex:1; min-height:48px; border-radius:12px; font-size:13.5px; font-weight:800;
+  background:linear-gradient(180deg,#3a3355,#2a2542); border:1px solid #4c4472; color:#d8d2ee;
+}
+.title-row button:active { transform:scale(.97); }
+.town-asc { font-size:12px; color:#ff9a6a; font-weight:800; margin-top:4px; }
+
+/* ===== v6: 설정/통계 ===== */
+.hud-ico { min-width:36px; min-height:32px; border-radius:9px; font-size:15px; background:#241f33; border:1px solid #3a3355; }
+.set-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 2px; border-bottom:1px dashed #2e2749; }
+.set-row .info { text-align:left; font-size:14.5px; font-weight:700; }
+.set-row .info small { display:block; font-size:11px; color:#9a92b5; font-weight:400; margin-top:2px; }
+.set-btn {
+  min-width:100px; min-height:44px; border-radius:11px; font-size:13.5px; font-weight:800;
+  background:linear-gradient(180deg,#3d3260,#2c2547); border:1px solid #55488a; color:#d8d2ee;
+}
+.set-btn.on { background:linear-gradient(180deg,#2e7a4f,#1e5236); border-color:#6cc094; color:#d2f5df; }
+.set-btn.warn { background:linear-gradient(180deg,#d15050,#a12f2f); border-color:#ea8a8a; color:#fff; }
+.set-btn:active { transform:scale(.96); }
+
+/* ===== v6: 튜토리얼 코치마크 ===== */
+#coach { position:absolute; inset:0; z-index:90; display:none; }
+#coach.show { display:block; }
+#coach.noring { background:rgba(5,4,10,.62); }
+.coach-ring {
+  position:absolute; border:3px solid #ffd76a; border-radius:14px;
+  box-shadow:0 0 0 4000px rgba(5,4,10,.62), 0 0 22px rgba(255,215,106,.8);
+  animation:coachPulse 1.2s ease-in-out infinite; pointer-events:none;
+}
+@keyframes coachPulse { 0%,100%{opacity:1;} 50%{opacity:.65;} }
+.coach-tip {
+  position:absolute; left:14px; right:14px; border-radius:14px; padding:14px;
+  background:linear-gradient(180deg,#2b2348,#1e1934); border:1px solid #7a5cff;
+  box-shadow:0 10px 30px rgba(0,0,0,.7); text-align:center; animation:modalPop .22s ease;
+}
+.coach-step { font-size:11px; color:#8fd0ff; font-weight:800; letter-spacing:1px; }
+.coach-text { font-size:14.5px; font-weight:700; line-height:1.65; margin:7px 0; }
+.coach-text b { color:#ffd76a; }
+.coach-tap { font-size:11.5px; color:#ffd76a; font-weight:800; animation:coachPulse 1.2s infinite; }
+.coach-skip {
+  display:block; margin:11px auto 0; font-size:11.5px; color:#8f86ad; font-weight:700;
+  background:none; border:1px solid #3c3260; border-radius:9px; padding:0 14px; min-height:40px;
+}
+
+/* ===== v6: 엔딩 ===== */
+#ending {
+  position:absolute; inset:0; z-index:80; display:none; flex-direction:column;
+  align-items:center; justify-content:center; gap:15px; padding:26px; text-align:center;
+  background:radial-gradient(100% 100% at 50% 28%, #3d2c10 0%, #171226 55%, #07060c 100%);
+}
+#ending.show { display:flex; animation:endingIn .9s ease; }
+@keyframes endingIn { from{opacity:0;} to{opacity:1;} }
+.end-crown { font-size:76px; line-height:1.1; animation:logoFloat 2.4s ease-in-out infinite; filter:drop-shadow(0 0 30px rgba(255,215,106,.8)); }
+.end-title { font-size:30px; font-weight:900; letter-spacing:4px; color:#ffd76a; text-shadow:0 0 26px rgba(255,180,60,.6); }
+.end-body { font-size:13.5px; color:#c9c2e2; line-height:1.9; max-width:330px; }
+.end-asc {
+  font-size:15px; font-weight:800; color:#ff9a6a; line-height:1.6;
+  background:rgba(255,120,60,.1); border:1px solid rgba(255,120,60,.45); border-radius:12px; padding:10px 16px;
+}
+#ending .m-btn { max-width:300px; }
+
+/* ===== v6: 가로 회전 안내 ===== */
+#rotateNote { display:none; }
+@media (orientation:landscape) and (max-height:500px) {
+  #rotateNote {
+    display:flex; position:fixed; inset:0; z-index:999; flex-direction:column;
+    align-items:center; justify-content:center; gap:12px; background:#07060c;
+    font-size:15px; font-weight:700; color:#c9c2e2; text-align:center; line-height:1.7;
+  }
+  #rotateNote .ri { font-size:44px; animation:logoFloat 2s infinite; }
+}
 </style>
 </head>
 <body>
 <div id="app">
 
+  <!-- ===== 타이틀 화면 (v6) ===== -->
+  <div id="screen-title" class="screen">
+    <div class="logo-dice">🎲</div>
+    <div>
+      <div class="logo-text">다이스 던전</div>
+      <div class="logo-sub">DICE DUNGEON — 보드 × 로그라이트 RPG</div>
+    </div>
+    <div class="title-cont" id="titleCont"></div>
+    <button id="btnTitleStart" onclick="titleStart()">⚔️ 모험 시작</button>
+    <div class="title-row">
+      <button onclick="openSettings()">⚙️ 설정</button>
+      <button onclick="openStats()">📊 통계</button>
+      <button onclick="openCredits()">👤 크레딧</button>
+    </div>
+    <div class="logo-ver" id="titleVer"></div>
+  </div>
+
   <!-- ===== 마을 화면 ===== -->
   <div id="screen-town" class="screen">
     <div class="town-title">
       <h1>🎲 다이스 던전</h1>
-      <p>보드 × 로그라이트 던전 RPG — 깊이 패치 프로토타입 v5</p>
+      <p id="townSub">보드 × 로그라이트 던전 RPG</p>
+      <p class="town-asc" id="townAsc" style="display:none"></p>
     </div>
     <div class="panel soul-panel">💠 소울스톤 <span class="num" id="townSoul">0</span></div>
     <div class="section-label">🧝 캐릭터 선택 (해금 💠300)</div>
@@ -432,7 +551,7 @@ button:disabled { opacity:.4; cursor:default; }
     <div class="section-label">📜 출전 정보</div>
     <div class="panel stat-preview" id="statPreview"></div>
     <button id="btnStartRun" onclick="startRun()">⚔️ 던전 입장</button>
-    <button class="town-reset" onclick="resetMeta()">메타 성장 초기화 (개발용)</button>
+    <button class="town-reset" onclick="backToTitle()">◀ 타이틀로 (설정·통계·크레딧)</button>
   </div>
 
   <!-- ===== 런(던전) 화면 ===== -->
@@ -442,6 +561,7 @@ button:disabled { opacity:.4; cursor:default; }
       <div class="job" id="hudJob">기사 Lv.1</div>
       <div class="gold">💰 <span id="hudGold">0</span></div>
       <div class="soul">💠 <span id="hudSoul">0</span></div>
+      <button class="hud-ico" id="btnMute" onclick="toggleSound()" aria-label="음소거">🔊</button>
     </div>
     <div class="xpbar"><div class="xpfill" id="xpFill"></div><span id="xpText"></span></div>
     <div class="hpwrap">
@@ -466,6 +586,17 @@ button:disabled { opacity:.4; cursor:default; }
 
   <div id="overlay"></div>
   <div id="floats"></div>
+  <div id="ending"></div>
+  <div id="coach" onclick="tutTap()">
+    <div class="coach-ring" id="coachRing"></div>
+    <div class="coach-tip" id="coachTip"></div>
+  </div>
+</div>
+
+<div id="rotateNote">
+  <div class="ri">📱</div>
+  세로 화면에 최적화된 게임입니다<br>
+  <span style="font-size:12.5px;color:#8f86ad;font-weight:400">기기를 세로로 돌려주세요</span>
 </div>
 
 <script>
@@ -520,8 +651,20 @@ const B = {
   SKILL_SLOTS: 3         // JobCatalog.SkillSlots
 };
 
-/* 연출 타이밍 */
-const T = { DICE: 500, DICE_TICK: 60, STEP: 150, LAND: 260, HIT: 180, MOB_GAP: 560, WIN_CLOSE: 850 };
+/* 연출 타이밍 — v6: 설정의 "연출 속도 빠름"이면 ×0.6 (규칙과 무관, 대기 시간만) */
+const T_BASE = { DICE: 500, DICE_TICK: 60, STEP: 150, LAND: 260, HIT: 180, MOB_GAP: 560, WIN_CLOSE: 850 };
+const T = Object.assign({}, T_BASE);
+function speedMult() { return (meta && meta.settings && meta.settings.fast) ? 0.6 : 1; }
+function applySpeed() { const m = speedMult(); for (const k of Object.keys(T_BASE)) T[k] = Math.round(T_BASE[k] * m); }
+function dur(ms) { return Math.round(ms * speedMult()); }
+
+/* ----- 어센션 (v6): 15층 클리어마다 +1 (최대 15) -----
+ * n=0이면 모든 배율 1.0 → v5와 완전히 동일 (밸런스 불변).
+ * 어센션 n: 몬스터 HP ×(1+0.10n), 공격 ×(1+0.08n), 결산 소울스톤 ×(1+0.10n) */
+const ASC_MAX = 15;
+const ascHpMult   = n => 1 + 0.10 * n;
+const ascAtkMult  = n => 1 + 0.08 * n;
+const ascSoulMult = n => 1 + 0.10 * n;
 
 /* ----- Elements.cs: 6속성 상성표 ----- */
 const ELEMS = ['neutral','fire','ice','earth','holy','shadow'];
@@ -1297,39 +1440,54 @@ function log(msg) {
     .join('');
 }
 
-/* ----- 저장 스키마: v1 { soul, hp, atk, def } → v2 (version 필드) ----- */
+/* ----- 저장 스키마: v1 { soul, hp, atk, def } → v2 (version 필드) → v3 (v6: 어센션·통계·설정·튜토리얼) ----- */
 const SAVE_KEY = 'diceDungeonMeta_v1';
 function defaultMeta() {
   return {
-    version: 2,
+    version: 3,
     soul: 0,
     train: { hp:0, atk:0, def:0 },
     relics: new Array(RELICS.length).fill(0),
     unlocked: { rogue:false, mage:false, cleric:false },  // 기사는 기본
     selected: 'knight',
-    totalRuns: 0, bestFloor: 0
+    totalRuns: 0, bestFloor: 0,
+    // v3 (배포 v6)
+    ascension: 0, clears15: 0, totalKills: 0,
+    charRuns: { knight:0, rogue:0, mage:0, cleric:0 },
+    settings: { sound:true, fast:false },
+    tutorialDone: false, tutSeen: 0
   };
 }
 let meta = defaultMeta();
 function migrateMeta(m) {
   if (!m || typeof m !== 'object') return defaultMeta();
   if (!m.version) {
-    // v1 → v2: 소울스톤·훈련 레벨 보존
-    const v2 = defaultMeta();
-    v2.soul = m.soul | 0;
-    v2.train = { hp: m.hp | 0, atk: m.atk | 0, def: m.def | 0 };
-    return v2;
+    // v1 → v3: 소울스톤·훈련 레벨 보존
+    const v1 = defaultMeta();
+    v1.soul = m.soul | 0;
+    v1.train = { hp: m.hp | 0, atk: m.atk | 0, def: m.def | 0 };
+    return v1;
   }
-  // v2: 결손 필드 보강
+  // v2(v5 세이브)/v3: 결손 필드 보강 — 기존 진행은 전부 보존
   const d = defaultMeta();
   m.train = Object.assign(d.train, m.train || {});
   m.unlocked = Object.assign(d.unlocked, m.unlocked || {});
+  m.charRuns = Object.assign(d.charRuns, m.charRuns || {});
+  m.settings = Object.assign(d.settings, m.settings || {});
   if (!Array.isArray(m.relics)) m.relics = d.relics;
   while (m.relics.length < RELICS.length) m.relics.push(0);
   if (!CHAR_ORDER.includes(m.selected)) m.selected = 'knight';
   m.soul = m.soul | 0;
   m.totalRuns = m.totalRuns | 0;
   m.bestFloor = m.bestFloor | 0;
+  m.ascension = Math.max(0, Math.min(ASC_MAX, m.ascension | 0));
+  m.clears15 = m.clears15 | 0;
+  m.totalKills = m.totalKills | 0;
+  m.tutSeen = m.tutSeen | 0;
+  m.tutorialDone = !!m.tutorialDone;
+  m.settings.sound = m.settings.sound !== false;
+  m.settings.fast = !!m.settings.fast;
+  m.version = 3;
   return m;
 }
 function loadMeta() {
@@ -1341,11 +1499,71 @@ function loadMeta() {
 function saveMeta() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch (e) { /* private mode */ }
 }
-function resetMeta() {
-  if (!confirm('메타 성장(소울스톤·훈련·유물·해금)을 모두 초기화할까요?')) return;
-  meta = defaultMeta();
+
+/* =====================================================================
+ * v6 — 사운드: WebAudio 합성 SFX (외부 파일 없음, Math.random 미사용)
+ * AudioContext가 없거나(테스트 환경) 음소거면 전부 조용히 no-op.
+ * ===================================================================== */
+const SFX = (function () {
+  let ctx = null;
+  function ready() {
+    if (!meta || !meta.settings || !meta.settings.sound) return null;
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+      }
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      return ctx;
+    } catch (e) { return null; }
+  }
+  /* 단음 합성: { f:주파수, d:길이, type, v:음량, at:지연, slide:종료 주파수 } */
+  function tone(o) {
+    const c = ready();
+    if (!c) return;
+    try {
+      const osc = c.createOscillator(), g = c.createGain();
+      const t0 = c.currentTime + (o.at || 0);
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(o.f, t0);
+      if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.slide), t0 + o.d);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(o.v || 0.1, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.d);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(t0); osc.stop(t0 + o.d + 0.03);
+    } catch (e) { /* no-op */ }
+  }
+  return {
+    unlock() { ready(); }, // 첫 사용자 제스처에서 resume
+    tap()  { tone({ f: 640, d: 0.05, type: 'square', v: 0.04 }); },
+    dice() { for (let i = 0; i < 6; i++) tone({ f: 1700 + (i * 173) % 500, d: 0.03, type: 'square', v: 0.05, at: i * 0.07 }); },
+    hop()  { tone({ f: 540, d: 0.055, type: 'triangle', v: 0.06 }); },
+    hit()  { tone({ f: 170, d: 0.13, type: 'sawtooth', v: 0.13, slide: 55 }); },
+    crit() { tone({ f: 1200, d: 0.16, type: 'square', v: 0.11, slide: 2300 }); },
+    heal() { tone({ f: 490, d: 0.26, type: 'sine', v: 0.1, slide: 980 }); },
+    gold() { tone({ f: 1480, d: 0.07, type: 'square', v: 0.07 }); tone({ f: 1975, d: 0.11, type: 'square', v: 0.07, at: 0.08 }); },
+    levelup() { [523, 659, 784].forEach((f, i) => tone({ f, d: 0.17, type: 'triangle', v: 0.12, at: i * 0.12 })); },
+    death() { tone({ f: 320, d: 0.75, type: 'sawtooth', v: 0.11, slide: 55 }); },
+    victory() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone({ f, d: 0.22, type: 'triangle', v: 0.12, at: i * 0.15 })); }
+  };
+})();
+function toggleSound() {
+  meta.settings.sound = !meta.settings.sound;
   saveMeta();
-  renderTown();
+  if (meta.settings.sound) SFX.unlock();
+  syncSoundUI();
+  SFX.tap();
+}
+function syncSoundUI() {
+  const b = $('btnMute');
+  if (b) b.textContent = meta.settings.sound ? '🔊' : '🔇';
+}
+function toggleSpeed() {
+  meta.settings.fast = !meta.settings.fast;
+  applySpeed();
+  saveMeta();
 }
 const isUnlocked = id => id === 'knight' || !!meta.unlocked[id];
 function trainBonus() {
@@ -1362,6 +1580,18 @@ function runBonus() {
  * ===================================================================== */
 function renderTown() {
   $('townSoul').textContent = meta.soul;
+  $('townSub').textContent = '보드 × 로그라이트 던전 RPG — ' + VERSION;
+  const ascEl = $('townAsc');
+  if (meta.ascension > 0) {
+    ascEl.style.display = 'block';
+    ascEl.textContent = '🔥 어센션 ' + meta.ascension + ' — 몬스터 HP +' +
+      Math.round((ascHpMult(meta.ascension) - 1) * 100) + '% · 공격 +' +
+      Math.round((ascAtkMult(meta.ascension) - 1) * 100) + '% · 소울스톤 +' +
+      Math.round((ascSoulMult(meta.ascension) - 1) * 100) + '%';
+  } else {
+    ascEl.style.display = 'none';
+    ascEl.textContent = '';
+  }
 
   /* 캐릭터 4종 선택/해금 */
   $('charGrid').innerHTML = CHAR_ORDER.map(id => {
@@ -1460,7 +1690,7 @@ function buyRelic(i) {
 let run = null;   // 현재 런
 let bt = null;    // 현재 전투
 let busy = false; // 입력 잠금 (연출 중)
-let uiMode = 'town'; // town|idle|anim|battle|levelup|jobchange|skilltree|shop|event|floorclear|result
+let uiMode = 'title'; // title|town|idle|anim|battle|levelup|jobchange|skilltree|shop|event|floorclear|ending|result|settings|stats|credits|wipe1|wipe2
 
 function startRun() {
   const bn = runBonus();
@@ -1469,6 +1699,7 @@ function startRun() {
   const player = buildUnit(sheet, bn);
   run = {
     charId: meta.selected, sheet, bonus: bn, mods: bn.mods,
+    asc: meta.ascension | 0, // v6: 이 런에 적용되는 어센션 (0이면 v5와 동일)
     floor: 1, floorsCleared: 0,
     gold: bn.mods.startGold,
     potions: B.START_POTIONS + bn.mods.startPotions,
@@ -1487,9 +1718,12 @@ function startRun() {
   showScreen('run');
   genFloor();
   log('🏰 던전 1층 — ' + themeOf(1).name + '에 진입했다.');
+  if (run.asc > 0) log('🔥 어센션 ' + run.asc + ' — 몬스터 HP +' + Math.round((ascHpMult(run.asc) - 1) * 100) +
+    '% · 공격 +' + Math.round((ascAtkMult(run.asc) - 1) * 100) + '%');
   busy = false;
   uiMode = 'idle';
   updateHUD();
+  tutShow(0); // 튜토리얼 ①: 주사위 굴리기
 }
 function refreshPlayer() {
   refreshUnit(run.sheet, run.player, run.bonus);
@@ -1647,7 +1881,7 @@ function healRatio(ratio, srcLabel) {
   const amt = Math.round(p.maxHp * ratio);
   const real = Math.min(p.maxHp - p.hp, amt);
   p.hp = Math.min(p.maxHp, p.hp + amt);
-  if (real > 0) floatText($('token') || $('hpFill'), '+' + real, 'heal');
+  if (real > 0) { floatText($('token') || $('hpFill'), '+' + real, 'heal'); SFX.heal(); }
   if (srcLabel) log('💚 ' + srcLabel + ' HP +' + real);
   updateHUD();
   return real;
@@ -1671,6 +1905,7 @@ function addGold(g, label) {
   if (hasEffect('goldFind')) g = Math.trunc(g * 1.25);
   run.gold += g;
   floatText($('token'), '+' + g + ' 💰', 'gold');
+  SFX.gold();
   if (label) log('💰 ' + label + ' 골드 +' + g);
   updateHUD();
 }
@@ -1757,6 +1992,7 @@ function rollDice() {
   if (busy || !run || !run.alive) return;
   setBusy(true);
   uiMode = 'anim';
+  SFX.dice();
   $('bcBadges').innerHTML = '';
   const d1El = $('die1'), d2El = $('die2');
   d1El.classList.add('rolling');
@@ -1809,7 +2045,7 @@ function rollDice() {
         (charmUsed ? ' (부적)' : '') + (rerolled ? ' (리롤)' : '') + (modLabel ? ' (' + modLabel + ')' : '') +
         (info.isDouble ? ' (더블!)' : '') + (info.isSeven ? ' (럭키 7!)' : ''));
 
-    setTimeout(() => moveSteps(info), 380);
+    setTimeout(() => moveSteps(info), dur(380));
   }, T.DICE);
 }
 
@@ -1819,6 +2055,7 @@ function moveSteps(info) {
   const step = () => {
     run.pos = (run.pos + 1) % B.BOARD_SIZE;
     placeToken(true);
+    SFX.hop();
     updateCenter();
     remaining--;
     if (remaining > 0) setTimeout(step, T.STEP);
@@ -1835,7 +2072,7 @@ function land(lapComplete, info) {
       healRatio(1.0, '💖 전설 효과 — 완주 회복!');
     }
     log('👑 보스 게이트가 열렸다...');
-    setTimeout(() => startBossBattle(info), 850);
+    setTimeout(() => startBossBattle(info), dur(850));
     return;
   }
   resolveTile(info);
@@ -1877,6 +2114,7 @@ function resolveTile(info) {
           addGold(B.battleGold(f) * (elite ? 2 : 1), elite ? '정예 처치! (2배)' : '전투 승리!');
           if (elite) addGear();
           endTurn();
+          tutShow(2); // 튜토리얼 ③: 칸 점령의 의미 (탭하면 ④ 완주=보스로 이어짐)
         }
       });
       return;
@@ -2053,7 +2291,7 @@ function evResultOk() {
     const gained = gainXp(run.sheet, o.xp);
     log('✨ 경험치 +' + o.xp + (gained > 0 ? ' — 레벨 업!' : ''));
     updateHUD();
-    if (gained > 0) { processProgression(() => endTurn()); return; }
+    if (gained > 0) { SFX.levelup(); processProgression(() => endTurn()); return; }
   }
   endTurn();
 }
@@ -2137,7 +2375,10 @@ function closeShop() {
  * ===================================================================== */
 function makeMonsters(floor, elite, mimic) {
   const th = themeOf(floor);
-  const hp = B.monsterHp(floor), atk = B.monsterAtk(floor), def = B.monsterDef(floor);
+  const asc = run ? (run.asc | 0) : 0; // 어센션 0 → ×1.0 = v5 동일
+  const hp = Math.round(B.monsterHp(floor) * ascHpMult(asc));
+  const atk = Math.round(B.monsterAtk(floor) * ascAtkMult(asc));
+  const def = B.monsterDef(floor);
   const element = floorElement(floor);
   const mk = (name, emoji, mhp, matk, spd, isBoss) => ({
     name, emoji, isBoss: !!isBoss,
@@ -2167,8 +2408,9 @@ function makeMonsters(floor, elite, mimic) {
 }
 function makeBoss(floor) {
   const th = themeOf(floor);
-  const hp = Math.floor(B.monsterHp(floor) * B.BOSS_HP_MULT);
-  const atk = Math.floor(B.monsterAtk(floor) * B.BOSS_ATK_MULT);
+  const asc = run ? (run.asc | 0) : 0; // 어센션 0 → ×1.0 = v5 동일
+  const hp = Math.floor(Math.round(B.monsterHp(floor) * ascHpMult(asc)) * B.BOSS_HP_MULT);
+  const atk = Math.floor(Math.round(B.monsterAtk(floor) * ascAtkMult(asc)) * B.BOSS_ATK_MULT);
   const def = B.monsterDef(floor);
   const trait = floor >= 10 ? 'enrage' : null; // 심층 보스: 광폭화 고정 (깊이 v5)
   return [{
@@ -2244,7 +2486,7 @@ function startBattle(cfg) {
       '<button id="btnBtBomb" onclick="btBomb()" disabled>💣 폭탄</button>' +
       '<button id="btnBtSmoke" onclick="btSmoke()" disabled>🌫 연막탄</button>' +
     '</div>' +
-    '<div class="actions">' +
+    '<div class="actions" id="btActions">' +
       '<button class="act-btn atk" id="btnAtk" onclick="btAttack()">⚔️ 공격</button>' +
       '<button class="act-btn def" id="btnDef" onclick="btDefend()">🛡️ 방어<small>피해 50%↓</small></button>' +
       '<button class="act-btn pot" id="btnPot" onclick="btPotion()">🧪 포션 ×' + run.potions + '<small>HP 40%</small></button>' +
@@ -2252,7 +2494,8 @@ function startBattle(cfg) {
     'battle'
   );
   updateBattleUI();
-  setTimeout(playerTurnStart, 400);
+  tutShow(1); // 튜토리얼 ②: 전투 — 공격/스킬
+  setTimeout(playerTurnStart, dur(400));
 }
 
 function renderSkillBar(enabled) {
@@ -2370,7 +2613,7 @@ function playerTurnStart() {
     battleButtons(false);
     btMsg('💫 기절해서 움직일 수 없다!');
     updateBattleUI();
-    setTimeout(afterPlayerAction, 600);
+    setTimeout(afterPlayerAction, dur(600));
     return;
   }
   bt.locked = false;
@@ -2450,7 +2693,7 @@ function btSmoke() {
     closeOverlay();
     updateHUD();
     cb();
-  }, 700);
+  }, dur(700));
 }
 
 /* 플레이어 타격 (기본 공격 or 공격 스킬) — InteractiveBattle.PlayerStrike */
@@ -2480,6 +2723,7 @@ function playerStrike(skill) {
     t.hp = Math.max(0, t.hp - dmg);
     flashHit(enEl);
     shake($('modalBox'));
+    if (r.crit) SFX.crit(); else SFX.hit();
     floatText(enEl, (r.crit ? '크리! -' : '-') + dmg, r.crit ? 'crit' : 'dmg');
     if (r.mult > 1) floatText(enEl, '효과적! ×' + r.mult, 'eff');
     else if (r.mult < 1) floatText(enEl, '비효과적 ×' + r.mult, 'res');
@@ -2518,7 +2762,7 @@ function btAttack() {
   bt.locked = true;
   battleButtons(false);
   playerStrike(null);
-  setTimeout(afterPlayerAction, 620);
+  setTimeout(afterPlayerAction, dur(620));
 }
 function btSkill(i) {
   if (!bt || bt.locked) return;
@@ -2535,6 +2779,7 @@ function btSkill(i) {
       const real = Math.min(run.player.maxHp - run.player.hp, amt);
       run.player.hp = Math.min(run.player.maxHp, run.player.hp + amt);
       floatText($('btPlRow'), '+' + real, 'heal');
+      SFX.heal();
       msg.push('HP +' + real);
     }
     if (s.shieldRatio > 0) {
@@ -2548,7 +2793,7 @@ function btSkill(i) {
   } else {
     playerStrike(s);
   }
-  setTimeout(afterPlayerAction, 620);
+  setTimeout(afterPlayerAction, dur(620));
 }
 function btDefend() {
   if (!bt || bt.locked) return;
@@ -2557,7 +2802,7 @@ function btDefend() {
   bt.defending = true;
   btMsg('🛡️ 방어 태세! 받는 피해 50% 감소');
   log('🛡️ 방어 태세를 취했다.');
-  setTimeout(afterPlayerAction, 420);
+  setTimeout(afterPlayerAction, dur(420));
 }
 function btPotion() {
   if (!bt || bt.locked) return;
@@ -2569,10 +2814,11 @@ function btPotion() {
   const real = Math.min(run.player.maxHp - run.player.hp, amt);
   run.player.hp = Math.min(run.player.maxHp, run.player.hp + amt);
   floatText($('btPlRow'), '+' + real, 'heal');
+  SFX.heal();
   btMsg('🧪 포션! HP +' + real);
   log('🧪 포션으로 HP ' + real + ' 회복');
   updateBattleUI();
-  setTimeout(afterPlayerAction, 520);
+  setTimeout(afterPlayerAction, dur(520));
 }
 
 /* 플레이어 행동 후: 승리 확인 → 몬스터 반격 → 쿨다운 감소 */
@@ -2664,6 +2910,7 @@ function monsterPhase() {
     const plRow = $('btPlRow');
     flashHit(plRow);
     shake($('modalBox'));
+    SFX.hit();
     if (real > 0) floatText(plRow, '-' + real, r.crit ? 'crit' : 'dmg');
     btMsg((enraged ? '😡 광폭화! ' : '💢 ') + m.name + '의 공격! -' + real +
       (absorbed > 0 ? ' (실드 ' + absorbed + ' 흡수)' : '') +
@@ -2686,14 +2933,14 @@ function monsterPhase() {
     }
     setTimeout(next, T.MOB_GAP);
   };
-  setTimeout(next, 460);
+  setTimeout(next, dur(460));
 }
 
 function endRound() {
   if (!bt || bt.over) return;
   for (const s of run.skills) if (s.cur > 0) s.cur--;
   if (aliveMonsters().length === 0) { winBattle(); return; }
-  setTimeout(playerTurnStart, 500);
+  setTimeout(playerTurnStart, dur(500));
 }
 
 function winBattle() {
@@ -2711,7 +2958,7 @@ function winBattle() {
       const gained = gainXp(run.sheet, xp);
       log('✨ 경험치 +' + xp + (gained > 0 ? ' — 레벨 업!' : ''));
       updateHUD();
-      if (gained > 0) { processProgression(cb); return; }
+      if (gained > 0) { SFX.levelup(); processProgression(cb); return; }
     }
     cb();
   }, T.WIN_CLOSE);
@@ -2725,7 +2972,7 @@ function loseBattle() {
     bt = null;
     closeOverlay();
     die();
-  }, 1000);
+  }, dur(1000));
 }
 
 /* =====================================================================
@@ -2913,7 +3160,7 @@ function floorClear() {
   log('🏆 ' + run.floor + '층 클리어! HP +' + healed + ' (35% 회복)');
 
   if (run.floor >= B.FINAL_FLOOR) {
-    endRun(false, true);
+    victory();
     return;
   }
   const nf = run.floor + 1;
@@ -2932,6 +3179,7 @@ function floorClear() {
     '<button class="m-btn danger" onclick="descend()">⬇️ 하강 — 더 큰 보상, 사망 시 70%만 회수</button>' +
     '<button class="m-btn gold" onclick="retreat()">🏠 귀환 — 소울스톤 100% 회수</button>'
   );
+  tutShow(4); // 튜토리얼 ⑤: 하강/귀환 선택
 }
 function descend() {
   closeOverlay();
@@ -2948,13 +3196,47 @@ function retreat() {
 function die() {
   run.alive = false;
   setBusy(true);
+  SFX.death();
   endRun(true, false);
 }
-/* 소울스톤: (층×10 + 킬) × 영혼 수확기, 사망 시 70% (RunController.Play) */
+/* 소울스톤: (층×10 + 킬) × 영혼 수확기 × 어센션(+10%/Lv), 사망 시 70% (RunController.Play) */
 function calcStones(died) {
-  let stones = B.soulstonesForRun(run.floorsCleared, run.kills) * run.mods.soulMult;
+  let stones = B.soulstonesForRun(run.floorsCleared, run.kills) * run.mods.soulMult * ascSoulMult(run.asc);
   if (died) stones *= B.DEATH_PENALTY;
   return Math.trunc(stones);
+}
+
+/* ===== v6: 15층 클리어 → 엔딩 연출 + 어센션 +1 (영구) ===== */
+function victory() {
+  uiMode = 'ending';
+  setBusy(true);
+  const prevAsc = meta.ascension | 0;
+  meta.clears15 = (meta.clears15 | 0) + 1;
+  if (prevAsc < ASC_MAX) meta.ascension = prevAsc + 1;
+  saveMeta(); // 어센션은 결산 전에 즉시 영구 저장
+  run.ascUp = (meta.ascension | 0) > prevAsc;
+  SFX.victory();
+  const n = meta.ascension | 0;
+  const e = $('ending');
+  e.innerHTML =
+    '<div class="end-crown">👑</div>' +
+    '<div class="end-title">심연 정복</div>' +
+    '<div class="end-body">15층, 심연의 군주가 무너지고 던전 가장 깊은 곳에 빛이 스며든다.<br>' +
+      '<b style="color:#ffd76a">' + jobName(run.sheet) + ' Lv.' + run.sheet.level + '</b> — 당신의 이야기는 마을의 전설이 되었다.<br>' +
+      '하지만 주사위는 다시 구르고... 던전은 한층 더 깊고 어두워진다.</div>' +
+    '<div class="end-asc">🔥 어센션 ' + n + (run.ascUp ? ' 달성!' : ' (최대)') +
+      '<br><span style="font-size:11.5px;font-weight:600">다음 런부터 몬스터 HP +' + Math.round((ascHpMult(n) - 1) * 100) +
+      '% · 공격 +' + Math.round((ascAtkMult(n) - 1) * 100) +
+      '% / 결산 소울스톤 +' + Math.round((ascSoulMult(n) - 1) * 100) + '%</span></div>' +
+    '<button class="m-btn gold" onclick="endingOk()">🏆 결산 보기</button>';
+  e.classList.add('show');
+}
+function endingOk() {
+  if (uiMode !== 'ending') return;
+  const e = $('ending');
+  e.classList.remove('show');
+  e.innerHTML = '';
+  endRun(false, true);
 }
 function endRun(died, victory) {
   setBusy(true);
@@ -2978,6 +3260,8 @@ function endRun(died, victory) {
       '<div class="row"><span>획득 장비</span><span>' + run.gearCount + '개</span></div>' +
       '<div class="row"><span>주사위 굴림</span><span>' + run.diceRolls + '회</span></div>' +
       '<div class="row"><span>골드 (런 종료 시 소멸)</span><span>💰 ' + run.gold + '</span></div>' +
+      (run.asc > 0 ? '<div class="row"><span>🔥 어센션 ' + run.asc + ' 보상 보너스</span><span>💠 +' +
+        Math.round((ascSoulMult(run.asc) - 1) * 100) + '%</span></div>' : '') +
       '<div class="row"><span><b>소울스톤 획득</b></span><span><b style="color:#8fd0ff">💠 +' + stones +
         (died ? ' (70%)' : '') + '</b></span></div>' +
     '</div>' +
@@ -2987,6 +3271,8 @@ function endRun(died, victory) {
 function backToTown() {
   meta.soul += run.pendingStones || 0;
   meta.totalRuns++;
+  meta.totalKills = (meta.totalKills | 0) + run.kills;
+  if (meta.charRuns[run.charId] != null) meta.charRuns[run.charId]++;
   if (run.floorsCleared > meta.bestFloor) meta.bestFloor = run.floorsCleared;
   saveMeta();
   run = null;
@@ -2996,6 +3282,216 @@ function backToTown() {
   closeOverlay();
   renderTown();
   showScreen('town');
+}
+
+/* =====================================================================
+ * PART F (v6) — 타이틀 / 설정 / 통계 / 크레딧 / 튜토리얼 / 배포 마무리
+ * ===================================================================== */
+const VERSION = 'v0.6.0';
+
+/* ----- 타이틀 화면 ----- */
+function renderTitle() {
+  $('titleVer').textContent = VERSION + ' · 데이터는 이 기기에만 저장됩니다';
+  const first = meta.totalRuns === 0 && meta.soul === 0 && meta.bestFloor === 0;
+  $('titleCont').innerHTML = first
+    ? '주사위를 굴려 던전 보드를 돌고, 싸우고, 점령하라.<br>죽어도 <b>💠 소울스톤</b>은 남는다 — 마을에서 더 강해져라.'
+    : '<b>이어서 모험하기</b><br>💠 <b>' + meta.soul + '</b> · 최고 <b>' + meta.bestFloor + '층</b> · 총 ' + meta.totalRuns + '런' +
+      (meta.ascension > 0
+        ? '<br><span class="title-asc">🔥 어센션 ' + meta.ascension + ' — 몬스터 HP +' +
+          Math.round((ascHpMult(meta.ascension) - 1) * 100) + '% · 공격 +' +
+          Math.round((ascAtkMult(meta.ascension) - 1) * 100) + '%</span>'
+        : '');
+  const startBtn = $('btnTitleStart');
+  if (startBtn) startBtn.textContent = first ? '⚔️ 모험 시작' : '⚔️ 모험 계속하기';
+}
+function titleStart() {
+  SFX.unlock();
+  uiMode = 'town';
+  renderTown();
+  showScreen('town');
+}
+function backToTitle() {
+  if (run) return; // 런 중에는 이동 불가
+  closeOverlay();
+  uiMode = 'title';
+  renderTitle();
+  showScreen('title');
+}
+function closeMenu() {
+  closeOverlay();
+  uiMode = 'title';
+}
+
+/* ----- 설정: 사운드 / 연출 속도 / 데이터 초기화 (2단계 확인) ----- */
+function openSettings() {
+  if (run) return; // 런 중에는 HUD 음소거 아이콘 사용
+  uiMode = 'settings';
+  renderSettings();
+}
+function renderSettings() {
+  overlay(
+    '<div class="m-title">⚙️ 설정</div>' +
+    '<div class="set-row"><div class="info">🔊 사운드<small>WebAudio 합성 효과음 (외부 파일 없음)</small></div>' +
+      '<button class="set-btn' + (meta.settings.sound ? ' on' : '') + '" onclick="toggleSound();renderSettings()">' +
+      (meta.settings.sound ? '🔊 켬' : '🔇 끔') + '</button></div>' +
+    '<div class="set-row"><div class="info">⏩ 연출 속도<small>빠름: 주사위·이동·전투 대기 시간 ×0.6</small></div>' +
+      '<button class="set-btn' + (meta.settings.fast ? ' on' : '') + '" onclick="toggleSpeed();renderSettings()">' +
+      (meta.settings.fast ? '⏩ 빠름' : '▶️ 보통') + '</button></div>' +
+    '<div class="set-row"><div class="info">📖 튜토리얼<small>다음 런에서 안내를 다시 봅니다</small></div>' +
+      '<button class="set-btn" onclick="tutReset();renderSettings()">' +
+      (meta.tutorialDone || meta.tutSeen ? '다시 보기' : '예정됨') + '</button></div>' +
+    '<div class="set-row"><div class="info">🗑️ 데이터 초기화<small>소울스톤·유물·어센션·통계 전부 삭제</small></div>' +
+      '<button class="set-btn warn" onclick="wipeAsk()">초기화...</button></div>' +
+    '<button class="m-btn dark" onclick="closeMenu()">닫기</button>'
+  );
+}
+function wipeAsk() { // 1단계 확인
+  uiMode = 'wipe1';
+  overlay(
+    '<div class="m-title">⚠️ 데이터 초기화</div>' +
+    '<div class="m-sub">소울스톤 · 훈련 · 유물 · 캐릭터 해금 · 어센션 · 통계가<br><b>모두 삭제</b>됩니다. 되돌릴 수 없습니다.</div>' +
+    '<button class="m-btn danger" onclick="wipeAsk2()">계속 — 최종 확인 단계로</button>' +
+    '<button class="m-btn dark" onclick="openSettings()">취소</button>'
+  );
+}
+function wipeAsk2() { // 2단계 확인
+  uiMode = 'wipe2';
+  overlay(
+    '<div class="m-title boss">정말 삭제할까요?</div>' +
+    '<div class="m-sub">지금 삭제되는 진행: 💠 ' + meta.soul + ' · 최고 ' + meta.bestFloor +
+      '층 · 어센션 ' + meta.ascension + '<br>마지막 확인입니다.</div>' +
+    '<button class="m-btn danger" onclick="wipeDo()">💀 전부 삭제한다</button>' +
+    '<button class="m-btn dark" onclick="openSettings()">취소</button>'
+  );
+}
+function wipeDo() {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* no-op */ }
+  meta = defaultMeta();
+  saveMeta();
+  applySpeed();
+  syncSoundUI();
+  closeOverlay();
+  uiMode = 'title';
+  renderTitle();
+  showScreen('title');
+}
+
+/* ----- 통계 ----- */
+function openStats() {
+  if (run) return;
+  uiMode = 'stats';
+  const row = (k, v) => '<div class="row"><span>' + k + '</span><span>' + v + '</span></div>';
+  overlay(
+    '<div class="m-title">📊 통계</div>' +
+    '<div class="m-rows">' +
+      row('총 런 수', meta.totalRuns + '회') +
+      row('최고 도달 층', meta.bestFloor + '층') +
+      row('총 처치 수', meta.totalKills + '마리') +
+      row('15층 클리어', meta.clears15 + '회') +
+      row('🔥 어센션 레벨', meta.ascension + ' / ' + ASC_MAX) +
+      CHAR_ORDER.map(id => row(CHARS[id].icon + ' ' + CHARS[id].name + ' 출전',
+        ((meta.charRuns[id] | 0)) + '런' + (isUnlocked(id) ? '' : ' (미해금)'))).join('') +
+    '</div>' +
+    '<button class="m-btn dark" onclick="closeMenu()">닫기</button>'
+  );
+}
+
+/* ----- 크레딧 ----- */
+function openCredits() {
+  if (run) return;
+  uiMode = 'credits';
+  overlay(
+    '<div class="m-title">👤 크레딧</div>' +
+    '<div class="m-rows">' +
+      '<div class="row"><span>게임 디자인 · 개발</span><span><b>BearHumanS</b></span></div>' +
+      '<div class="row"><span>버전</span><span>' + VERSION + '</span></div>' +
+      '<div class="row"><span>그래픽</span><span>이모지 + CSS</span></div>' +
+      '<div class="row"><span>사운드</span><span>WebAudio 합성</span></div>' +
+      '<div class="row"><span>폰트</span><span>시스템 기본 서체</span></div>' +
+    '</div>' +
+    '<p style="font-size:12.5px;color:#9a92b5;line-height:1.8;margin:8px 0 2px">' +
+      '🐛 버그 제보와 피드백은 이 게임이 배포된 GitHub 저장소의 <b style="color:#8fd0ff">Issues</b> 탭에 남겨주세요.<br>' +
+      '작은 의견 하나가 다음 패치를 만듭니다. 플레이해 주셔서 감사합니다!</p>' +
+    '<button class="m-btn dark" onclick="closeMenu()">닫기</button>'
+  );
+}
+
+/* ----- 첫 런 튜토리얼: 코치마크 5단계 (localStorage 플래그, 단계별 최초 1회) ----- */
+const TUT_STEPS = [
+  { target: 'btnRoll',  text: '🎲 <b>주사위를 굴려</b> 나온 합만큼 시계 방향으로 이동해요.<br>보드의 한 칸 한 칸이 사건입니다.' },
+  { target: 'btActions', text: '⚔️ 전투! <b>공격 · 스킬 · 방어 · 포션</b> 중 하나를 골라요.<br>스킬이 더 강하지만 쿨다운이 있어요.' },
+  { target: 'board',    text: '🚩 전투에서 이긴 칸은 <b>점령</b>돼요.<br>다시 밟으면 회복되고, 점령이 많을수록 전투 시작 실드가 커져요.' },
+  { target: 'bcHint',   text: '👑 보드를 <b>한 바퀴 완주</b>하면 이 층의 <b>보스</b>가 나타나요.<br>완주 보너스 골드도 두둑하게!' },
+  { target: 'modalBox', text: '⬇️ <b>하강</b> — 더 깊이, 더 큰 보상. 단, 죽으면 소울스톤 70%만.<br>🏠 <b>귀환</b> — 지금까지 모은 소울스톤 100% 확보. 당신의 선택!' }
+];
+let tutStep = -1; // 현재 표시 중인 단계 (-1 = 없음)
+function tutShow(step) {
+  if (meta.tutorialDone || (meta.tutSeen & (1 << step))) return false;
+  meta.tutSeen |= (1 << step);
+  saveMeta();
+  tutStep = step;
+  const t = TUT_STEPS[step];
+  $('coachTip').innerHTML =
+    '<div class="coach-step">튜토리얼 ' + (step + 1) + ' / ' + TUT_STEPS.length + '</div>' +
+    '<div class="coach-text">' + t.text + '</div>' +
+    '<div class="coach-tap">▶ 탭해서 계속</div>' +
+    '<button class="coach-skip" onclick="tutSkip(event)">다시 보지 않기</button>';
+  $('coach').classList.add('show');
+  positionCoach(t.target);
+  return true;
+}
+function positionCoach(id) {
+  const ring = $('coachRing'), tip = $('coachTip'), coach = $('coach');
+  const target = $(id), app = $('app');
+  try {
+    const a = app.getBoundingClientRect(), r = target ? target.getBoundingClientRect() : null;
+    if (!r || (!r.width && !r.height)) { // 타깃을 못 찾으면 링 없이 중앙 안내
+      ring.style.display = 'none';
+      coach.classList.add('noring');
+      tip.style.top = '34%';
+      return;
+    }
+    coach.classList.remove('noring');
+    ring.style.display = 'block';
+    ring.style.left = (r.left - a.left - 5) + 'px';
+    ring.style.top = (r.top - a.top - 5) + 'px';
+    ring.style.width = (r.width + 10) + 'px';
+    ring.style.height = (r.height + 10) + 'px';
+    const mid = r.top - a.top + r.height / 2;
+    tip.style.top = mid > (a.height || 640) / 2
+      ? Math.max(10, r.top - a.top - 190) + 'px'   // 타깃이 아래쪽 → 팁은 위
+      : (r.top - a.top + r.height + 14) + 'px';    // 타깃이 위쪽 → 팁은 아래
+  } catch (e) {
+    ring.style.display = 'none';
+    coach.classList.add('noring');
+  }
+}
+function tutHide() {
+  tutStep = -1;
+  $('coach').classList.remove('show');
+}
+function tutTap() {
+  if (tutStep < 0) return;
+  const cur = tutStep;
+  tutHide();
+  SFX.tap();
+  if (cur === 2 && tutShow(3)) return; // ③점령 → ④완주=보스 체인
+  // 5단계를 전부 본 순간 완료 (덜 본 단계는 다음에 상황이 오면 1회 표시)
+  if (!meta.tutorialDone && meta.tutSeen === (1 << TUT_STEPS.length) - 1) {
+    meta.tutorialDone = true;
+    saveMeta();
+  }
+}
+function tutSkip(ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  meta.tutorialDone = true;
+  saveMeta();
+  tutHide();
+}
+function tutReset() { // 설정: 튜토리얼 다시 보기
+  meta.tutorialDone = false;
+  meta.tutSeen = 0;
+  saveMeta();
 }
 
 /* =====================================================================
@@ -3013,13 +3509,40 @@ window.DD = {
   // v5: 소모품·이벤트·트레이트·장비
   buildEvents, evSuccessChance, evPickByEV, rollTrait, tryDetonateBurn,
   generateEquipment, gearScore, applyDiceMod, bombDamage, shopPrices,
-  CHARS, PATHS, BASE_TREES, B, RELICS, CONSUM, TRAITS, RARITIES, SLOT_KEYS
+  CHARS, PATHS, BASE_TREES, B, RELICS, CONSUM, TRAITS, RARITIES, SLOT_KEYS,
+  // v6: 어센션·튜토리얼·설정·마이그레이션
+  get tutStep() { return tutStep; },
+  ascHpMult, ascAtkMult, ascSoulMult, ASC_MAX, VERSION, T,
+  makeMonsters, makeBoss, migrateMeta, defaultMeta
 };
 
-window.addEventListener('resize', () => { if (run) placeToken(false); });
+window.addEventListener('resize', () => {
+  if (run) placeToken(false);
+  if (tutStep >= 0) positionCoach(TUT_STEPS[tutStep].target);
+});
+/* v6: 화면 꺼짐·탭 전환 시 즉시 저장 (상태 보존) */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveMeta();
+});
+window.addEventListener('pagehide', () => saveMeta());
+/* v6: 첫 사용자 제스처에서 AudioContext 활성화 + 버튼 탭 사운드 */
+document.addEventListener('pointerdown', () => SFX.unlock(), { once: true, capture: true });
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t && t.closest && t.closest('button') && !t.closest('#coach')) SFX.tap();
+}, true);
+/* v6: PWA — 등록 실패(파일로 직접 열기 등)는 조용히 무시, 단일 파일로도 완전 동작 */
+try {
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+} catch (e) { /* no-op */ }
+
 loadMeta();
-renderTown();
-showScreen('town');
+applySpeed();
+syncSoundUI();
+renderTitle();
+showScreen('title');
 </script>
 </body>
 </html>
