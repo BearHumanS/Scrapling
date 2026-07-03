@@ -23,6 +23,7 @@ if (args.Contains("meta")) { Simulation.MetaProgression(); return; }
 if (args.Contains("chars")) { Simulation.CharacterCompare(); return; }
 if (args.Contains("jobs")) { Simulation.JobCompare(); return; }
 if (args.Contains("laps")) { Simulation.LapCompare(); return; }
+if (args.Contains("farm")) { Simulation.FarmEfficiency(); return; }
 if (args.Contains("economy")) { Simulation.Economy(); return; }
 Simulation.Baseline(runs: 1000);
 
@@ -90,6 +91,50 @@ static class Simulation
                 $"| {results.Average(r => r.MonstersKilled),13:F1}");
         }
         Console.WriteLine("\n(기대: 어느 전략도 압도적이지 않아야 함 — 층수↔재화의 트레이드오프)");
+    }
+
+    /// <summary>
+    /// 파밍 효율 감사: 귀환 시점별 "주사위 1회당 소울스톤" — 얕은 반복이
+    /// 시간 효율 최적이면 최적 플레이가 지루한 노가다라는 설계 결함.
+    /// </summary>
+    public static void FarmEfficiency()
+    {
+        Console.WriteLine("=== 귀환 전략별 시간 효율 (1,000런/전략, 기사, 메타 0) ===\n");
+        Console.WriteLine("전략            | 평균층 | 소울스톤/런 | 굴림/런 | 소울스톤/굴림 | 사망률");
+        Console.WriteLine("----------------|--------|------------|---------|--------------|-------");
+        var strategies = new (string name, double threshold)[]
+        {
+            ("1층 즉시 귀환", 2.0),     // hpRatio는 2.0 이상이 될 수 없음 → 항상 귀환
+            ("3층 귀환", -3),           // 음수 = N층 도달 후 귀환 (아래 특수 처리)
+            ("5층 귀환", -5),
+            ("죽을 때까지", 0.0),
+        };
+        foreach (var (name, threshold) in strategies)
+        {
+            var results = new List<RunResult>();
+            for (int i = 0; i < 1000; i++)
+            {
+                IPlayerPolicy policy = threshold < 0
+                    ? new FloorCapPolicy((int)-threshold)
+                    : new GreedyPolicy(descendHpThreshold: threshold);
+                results.Add(new RunController(7100 + i, new RunConfig(), policy).Play());
+            }
+            double stones = results.Average(r => r.Soulstones);
+            double rolls = results.Average(r => r.DiceRolls);
+            Console.WriteLine($"{name,-13} | {results.Average(r => r.FloorsCleared),6:F2} " +
+                $"| {stones,10:F1} | {rolls,7:F1} | {stones / rolls,12:F2} " +
+                $"| {results.Count(r => r.DeathFloor > 0) * 100.0 / results.Count,5:F1}%");
+        }
+    }
+
+    /// <summary>N층 도달 후 귀환하는 감사용 정책.</summary>
+    private sealed class FloorCapPolicy : IPlayerPolicy
+    {
+        private readonly int _cap;
+        public FloorCapPolicy(int cap) { _cap = cap; }
+        public bool Descend(int nextFloor, double hpRatio) => nextFloor <= _cap && hpRatio >= 0.35;
+        public bool UsePotion(double hpRatio, int potions) => potions > 0 && hpRatio < 0.45;
+        public bool EnterBoss(int floor, int lapsDone, double hpRatio) => lapsDone >= 2 || hpRatio < 0.65;
     }
 
     /// <summary>훈련소 성장 단계별 도달 층 → 벽(Wall) 위치와 성장 체감 검증.</summary>
