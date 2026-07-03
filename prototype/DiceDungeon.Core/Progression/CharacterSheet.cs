@@ -68,6 +68,15 @@ namespace DiceDungeon.Core.Progression
 
         public IEnumerable<SkillDef> SkillPool => JobCatalog.SkillPool(Job, Advanced);
 
+        /// <summary>수동 스탯 배분 (UI용). 성공 시 true.</summary>
+        public bool SpendStatPoint(StatId id)
+        {
+            if (UnspentStatPoints <= 0) return false;
+            Stats.Add(id, 1);
+            UnspentStatPoints--;
+            return true;
+        }
+
         // ---------- 시뮬레이션용 자동 정책 (07-심화시스템 6) ----------
 
         /// <summary>스탯 자동 배분: 직업 편향 리스트 순환.</summary>

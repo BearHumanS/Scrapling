@@ -28,6 +28,11 @@ namespace DiceDungeon.Game
             BuildChoicePanel(root);
             BuildResultPanel(root);
 
+            // 심화 시스템 팝업 (레벨업/전직/스킬트리) — 가장 위에 렌더되도록 마지막에 구성
+            var progression = gameObject.AddComponent<ProgressionPanels>();
+            progression.Build(root, () => _game.Sheet);
+            _game.Progression = progression;
+
             _game.RunPanel.SetActive(false);
             _game.ChoicePanel.SetActive(false);
             _game.ResultPanel.SetActive(false);
@@ -63,9 +68,12 @@ namespace DiceDungeon.Game
             // 주사위 (엄지 존)
             _game.DiceText = UiFactory.Label(panel, "Dice", "🎲 -", 44, Color.white,
                 new Vector2(0.05f, 0.09f), new Vector2(0.95f, 0.15f));
-            _game.RollButton = UiFactory.ActionButton(panel, "Roll", "주사위 굴리기", 44,
-                new Vector2(0.15f, 0.015f), new Vector2(0.85f, 0.08f),
+            _game.RollButton = UiFactory.ActionButton(panel, "Roll", "주사위 굴리기", 42,
+                new Vector2(0.04f, 0.015f), new Vector2(0.66f, 0.08f),
                 new Color(0.85f, 0.55f, 0.15f), () => _game.OnRollPressed());
+            UiFactory.ActionButton(panel, "SkillTree", "스킬", 38,
+                new Vector2(0.68f, 0.015f), new Vector2(0.96f, 0.08f),
+                new Color(0.45f, 0.3f, 0.55f), () => _game.OnSkillTreePressed());
         }
 
         private void BuildTownPanel(Transform root)

@@ -7,6 +7,7 @@ using DiceDungeon.Core.Board;
 using DiceDungeon.Core.Characters;
 using DiceDungeon.Core.Data;
 using DiceDungeon.Core.Meta;
+using DiceDungeon.Core.Progression;
 using DiceDungeon.Core.Run;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,6 +25,7 @@ namespace DiceDungeon.Game
         // Bootstrap이 배선
         public BoardView Board;
         public BattleView BattleUi;
+        public ProgressionPanels Progression;
         public Text FloorText, GoldText, SoulText, HpText, DiceText, LogText;
         public Image HpFill;
         public Button RollButton;
@@ -38,6 +40,7 @@ namespace DiceDungeon.Game
         private Rng _rng;
         private DiceRoller _dice;
         private CharacterClass _character;
+        private CharacterSheet _sheet;
         private RelicModifiers _mods;
         private Unit _player;
         private List<Skill> _skills;
@@ -90,18 +93,20 @@ namespace DiceDungeon.Game
             RefreshTownUi?.Invoke();
         }
 
+        public CharacterSheet Sheet => _sheet;
+
         public void StartRun()
         {
             var config = RunConfig.From(_profile, _selected);
             _character = CharacterClass.Get(_selected);
             _mods = config.Mods;
-            _player = new Unit(_character.Name,
-                _character.Hp + config.BonusHp + _mods.BonusHp,
-                _character.Atk + config.BonusAtk + _mods.BonusAtk,
-                _character.Def + config.BonusDef + _mods.BonusDef,
-                _character.Spd,
-                _character.CritChance + _mods.BonusCrit);
-            _skills = _character.Skills.Select(s => s.Instance()).ToList();
+            _sheet = new CharacterSheet(_selected);
+            _player = _sheet.BuildUnit(
+                config.BonusHp + _mods.BonusHp,
+                config.BonusAtk + _mods.BonusAtk,
+                config.BonusDef + _mods.BonusDef,
+                _mods.BonusCrit);
+            _skills = _sheet.EquipSkills();
             _rng = new Rng(System.Environment.TickCount);
             _gold = _mods.StartGold;
             _potions = 2 + _mods.StartPotions;
@@ -112,6 +117,35 @@ namespace DiceDungeon.Game
             TownPanel.SetActive(false);
             RunPanel.SetActive(true);
             NextFloor();
+            // 시작 스킬 포인트 1개 → 첫 스킬 선택부터 빌드가 시작된다
+            RollButton.interactable = false;
+            StartCoroutine(SkillTreeRoutine());
+        }
+
+        private void RefreshPlayerFromSheet()
+        {
+            var config = RunConfig.From(_profile, _selected);
+            _sheet.Refresh(_player,
+                config.BonusHp + _mods.BonusHp,
+                config.BonusAtk + _mods.BonusAtk,
+                config.BonusDef + _mods.BonusDef,
+                _mods.BonusCrit);
+            _skills = _sheet.EquipSkills();
+        }
+
+        public void OnSkillTreePressed()
+        {
+            if (!RollButton.interactable) return; // 이동/전투 중에는 불가
+            RollButton.interactable = false;
+            StartCoroutine(SkillTreeRoutine());
+        }
+
+        private IEnumerator SkillTreeRoutine()
+        {
+            yield return Progression.RunSkillTree();
+            RefreshPlayerFromSheet();
+            RefreshHud();
+            RollButton.interactable = true;
         }
 
         private void NextFloor()
@@ -239,15 +273,18 @@ namespace DiceDungeon.Game
 
         private IEnumerator BattleRoutine(List<Unit> monsters, DiceResult roll, bool isBoss)
         {
+            int perTile = 2 * (_character.DoubleCaptureShield ? 2 : 1)
+                            * (_sheet.HasCaptureShieldTriple ? 3 : 1);
             var options = new BattleOptions
             {
                 CritBonus = roll.IsLuckySeven ? 0.15 : 0,
                 PlayerFirst = roll.IsDouble,
-                StartShield = _capturedThisFloor * (_character.DoubleCaptureShield ? 4 : 2)
+                StartShield = _capturedThisFloor * perTile
                               + (int)(_player.MaxHp * _character.BarrierRatio),
                 Skills = _skills,
                 ReviveAvailable = _reviveLeft,
-                Evasion = _character.Evasion,
+                ReviveRatio = _sheet.HasReviveBoost ? 0.7 : 0.5,
+                BurnOnHit = _sheet.BurnOnHitChance,
             };
 
             // 수동 전투 (Week 3): InteractiveBattle이 판정, BattleView가 입력·연출
@@ -262,7 +299,25 @@ namespace DiceDungeon.Game
             RefreshHud();
 
             if (!battle.PlayerWon)
+            {
                 yield return EndRunRoutine(died: true);
+                yield break;
+            }
+
+            // 경험치 → 레벨업(스탯 배분) → 전직 (07-심화시스템 5)
+            int xp = battle.MonstersKilled * Balance.MonsterXp(_floor) * (isBoss ? Balance.BossXpMult : 1);
+            int gained = _sheet.GainXp(xp);
+            if (gained > 0)
+            {
+                Log($"레벨 업! Lv{_sheet.Level} (+경험치 {xp})");
+                if (_sheet.CanJobChange)
+                    yield return Progression.RunJobChange();
+                yield return Progression.RunLevelUp();
+                if (_sheet.Book.Points > 0)
+                    yield return Progression.RunSkillTree();
+                RefreshPlayerFromSheet();
+                RefreshHud();
+            }
         }
 
         private IEnumerator FloorClearRoutine()
@@ -369,11 +424,12 @@ namespace DiceDungeon.Game
             int hp = Balance.MonsterHp(_floor);
             int atk = Balance.MonsterAtk(_floor);
             int def = Balance.MonsterDef(_floor);
+            var element = ElementTable.FloorElement(_floor); // 층 테마 = 방어 속성
             if (elite)
-                return new List<Unit> { new Unit("Elite", (int)(hp * 1.8), (int)(atk * 1.3), def, 9) };
+                return new List<Unit> { new Unit("Elite", (int)(hp * 1.8), (int)(atk * 1.3), def, 9) { Element = element } };
             int count = _floor <= Balance.SoloMonsterFloors ? 1 : _rng.Next(1, 3);
             var list = new List<Unit>();
-            for (int i = 0; i < count; i++) list.Add(new Unit("Mob", hp, atk, def, 8));
+            for (int i = 0; i < count; i++) list.Add(new Unit("Mob", hp, atk, def, 8) { Element = element });
             return list;
         }
 
@@ -383,11 +439,13 @@ namespace DiceDungeon.Game
                 (int)(Balance.MonsterHp(_floor) * Balance.BossHpMult),
                 (int)(Balance.MonsterAtk(_floor) * Balance.BossAtkMult),
                 Balance.MonsterDef(_floor), 9)
+            { Element = ElementTable.FloorElement(_floor) }
         };
 
         private void RefreshHud()
         {
-            FloorText.text = $"{_floor}층";
+            string job = _sheet?.Advanced?.Name ?? _character?.Name ?? "";
+            FloorText.text = $"{_floor}층 · {job} Lv{_sheet?.Level ?? 1}";
             GoldText.text = $"{_gold}G";
             SoulText.text = $"◆{_profile.Soulstones}";
             HpText.text = $"{_player.Hp}/{_player.MaxHp}  물약{_potions}";
