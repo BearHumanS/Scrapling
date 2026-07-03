@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>다이스 던전 — 프로토타입</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; }
+body {
+  background:#07060c; color:#e8e4f0;
+  font-family:'Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
+  overscroll-behavior:none; touch-action:manipulation;
+  -webkit-user-select:none; user-select:none;
+}
+button { font-family:inherit; cursor:pointer; border:none; color:inherit; }
+button:disabled { opacity:.4; cursor:default; }
+
+#app {
+  position:relative; max-width:480px; margin:0 auto;
+  min-height:100dvh; display:flex; flex-direction:column;
+  background:radial-gradient(120% 90% at 50% 0%, #171226 0%, #0b0a14 55%, #07060c 100%);
+  box-shadow:0 0 40px rgba(0,0,0,.8); overflow:hidden;
+}
+.screen { display:none; flex:1; flex-direction:column; min-height:100dvh; }
+.screen.active { display:flex; }
+
+/* ===== 마을 ===== */
+#screen-town { padding:28px 20px 20px; gap:14px; }
+.town-title { text-align:center; margin-top:8px; }
+.town-title h1 { font-size:30px; letter-spacing:2px; color:#ffd76a; text-shadow:0 3px 14px rgba(255,180,60,.35); }
+.town-title p { font-size:13px; color:#9a92b5; margin-top:6px; }
+.panel {
+  background:linear-gradient(180deg,#1e1930 0%,#181428 100%);
+  border:1px solid #322b4d; border-radius:14px; padding:14px 16px;
+}
+.soul-panel { display:flex; align-items:center; justify-content:center; gap:8px; font-size:20px; font-weight:700; }
+.soul-panel .num { color:#8fd0ff; }
+.stat-preview { font-size:14px; line-height:1.9; }
+.stat-preview .row { display:flex; justify-content:space-between; }
+.stat-preview .bonus { color:#7ee787; font-weight:700; }
+.section-label { font-size:12px; color:#8f86ad; letter-spacing:1px; margin:2px 2px -6px; }
+.train-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; }
+.train-row + .train-row { border-top:1px solid #2b2542; }
+.train-info { font-size:14px; line-height:1.5; }
+.train-info small { color:#9a92b5; display:block; font-size:11px; }
+.train-btn {
+  min-width:104px; min-height:48px; border-radius:12px; font-size:13px; font-weight:700;
+  background:linear-gradient(180deg,#3d3260,#2c2547); border:1px solid #55488a; color:#e8e4f0;
+}
+.train-btn:not(:disabled):active { transform:scale(.96); }
+#btnStartRun {
+  margin-top:auto; min-height:64px; border-radius:16px; font-size:20px; font-weight:800; letter-spacing:1px;
+  background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703;
+  box-shadow:0 6px 18px rgba(240,184,67,.3), inset 0 1px 0 rgba(255,255,255,.4);
+}
+#btnStartRun:active { transform:scale(.98); }
+.town-reset { text-align:center; font-size:11px; color:#585174; padding:4px; background:none; }
+
+/* ===== 런 화면 ===== */
+#screen-run { padding:10px 10px calc(12px + env(safe-area-inset-bottom)); gap:8px; }
+.hud {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  background:#181428; border:1px solid #2d2747; border-radius:12px; padding:9px 12px;
+  font-size:14px; font-weight:700;
+}
+.hud .floor { color:#ffd76a; }
+.hud .gold { color:#f5cf6b; }
+.hud .soul { color:#8fd0ff; }
+.hpwrap { display:flex; align-items:center; gap:8px; }
+.hpbar {
+  position:relative; flex:1; height:24px; border-radius:12px; overflow:hidden;
+  background:#241f33; border:1px solid #3a3355;
+}
+.hpfill {
+  height:100%; width:100%; border-radius:12px;
+  background:linear-gradient(90deg,#4fd06a,#8ce07a);
+  transition:width .35s ease, background .35s ease;
+}
+.hpbar span {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.8);
+}
+.substats { font-size:12.5px; font-weight:700; color:#c9c2e2; white-space:nowrap; }
+
+#boardWrap { position:relative; }
+#board {
+  position:relative; display:grid; aspect-ratio:1; gap:3px;
+  grid-template-columns:repeat(7,1fr); grid-template-rows:repeat(7,1fr);
+}
+.tile {
+  position:relative; display:flex; align-items:center; justify-content:center;
+  border-radius:7px; font-size:clamp(13px,4.4vw,21px);
+  background:#241f33; border:1px solid #34304a;
+  transition:box-shadow .2s, background .3s;
+}
+.tile.start    { background:#37285e; border-color:#7a5cff; }
+.tile.battle   { background:#3a2331; border-color:#5c3247; }
+.tile.elite    { background:#481d24; border-color:#a53445; box-shadow:inset 0 0 8px rgba(230,70,80,.35); }
+.tile.treasure { background:#41351a; border-color:#8a6d2f; }
+.tile.shop     { background:#1d3542; border-color:#3f7a94; }
+.tile.rest     { background:#42301f; border-color:#9a6a35; }
+.tile.trap     { background:#2a3320; border-color:#5f7a3a; }
+.tile.event    { background:#232a4a; border-color:#4a5aa0; }
+.tile.captured { background:#1e3350; border-color:#4a7cc0; box-shadow:inset 0 0 8px rgba(90,150,255,.3); }
+.tile.captured::after { content:'🚩'; position:absolute; top:-5px; right:-3px; font-size:12px; filter:drop-shadow(0 1px 2px #000); }
+.tile.cur { outline:2px solid #ffd76a; box-shadow:0 0 12px rgba(255,215,106,.55); z-index:2; }
+
+.board-center {
+  grid-area:2 / 2 / 7 / 7; margin:5px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  background:radial-gradient(80% 80% at 50% 30%, #1b1530 0%, #120e20 100%);
+  border:1px solid #2c2547; border-radius:12px; text-align:center; padding:6px;
+}
+.bc-theme { font-size:11px; color:#8f86ad; letter-spacing:1px; }
+.bc-floor { font-size:26px; font-weight:800; color:#ffd76a; line-height:1; text-shadow:0 2px 10px rgba(255,180,60,.3); }
+.dicewrap { display:flex; gap:10px; margin-top:2px; }
+.die {
+  width:46px; height:46px; border-radius:11px;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,#fdfbf4,#d9d3c5); color:#241f33;
+  font-size:25px; font-weight:800;
+  box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 -3px 0 rgba(0,0,0,.15);
+  transition:transform .1s;
+}
+.die.rolling { animation:diceShake .1s infinite; }
+@keyframes diceShake {
+  0%   { transform:rotate(-9deg) translateY(-2px); }
+  50%  { transform:rotate(8deg) translateY(2px); }
+  100% { transform:rotate(-6deg) translateY(-1px); }
+}
+.die.landed { animation:diceLand .3s ease; }
+@keyframes diceLand { 0%{transform:scale(1.35);} 60%{transform:scale(.92);} 100%{transform:scale(1);} }
+.bc-badges { min-height:20px; display:flex; flex-direction:column; gap:3px; align-items:center; }
+.badge {
+  font-size:11px; font-weight:800; padding:2px 9px; border-radius:9px;
+  background:rgba(255,215,106,.14); color:#ffd76a; border:1px solid rgba(255,215,106,.45);
+  animation:badgePop .3s ease;
+}
+@keyframes badgePop { from{transform:scale(.5);opacity:0;} to{transform:scale(1);opacity:1;} }
+.bc-hint { font-size:11px; color:#7b7398; }
+
+#token {
+  position:absolute; z-index:5; font-size:27px; left:0; top:0;
+  transform:translate(-50%,-58%);
+  transition:left .15s linear, top .15s linear;
+  filter:drop-shadow(0 4px 5px rgba(0,0,0,.7));
+  pointer-events:none;
+}
+#token.notrans { transition:none; }
+#token.hopping { animation:hop .15s linear; }
+@keyframes hop { 50% { margin-top:-7px; } }
+
+#logPanel {
+  background:#12101d; border:1px solid #262040; border-radius:10px;
+  padding:7px 11px; min-height:64px; font-size:12.5px; line-height:1.55;
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+#logPanel .l0 { opacity:.45; } #logPanel .l1 { opacity:.7; } #logPanel .l2 { opacity:1; }
+
+.bottomBar { display:flex; gap:8px; margin-top:auto; }
+#btnFieldPotion {
+  min-width:76px; min-height:58px; border-radius:14px; font-size:14px; font-weight:800;
+  background:linear-gradient(180deg,#33414f,#25303b); border:1px solid #4a6076; color:#bfe3ff;
+}
+#btnRoll {
+  flex:1; min-height:58px; border-radius:14px; font-size:19px; font-weight:800; letter-spacing:1px;
+  background:linear-gradient(180deg,#8358e8,#5c39b8); color:#fff;
+  border:1px solid #9d7cf0;
+  box-shadow:0 5px 16px rgba(131,88,232,.35), inset 0 1px 0 rgba(255,255,255,.3);
+}
+#btnRoll:not(:disabled):active, #btnFieldPotion:not(:disabled):active { transform:scale(.97); }
+
+/* ===== 오버레이 / 모달 ===== */
+#overlay {
+  position:absolute; inset:0; z-index:50; display:none;
+  align-items:center; justify-content:center; padding:16px;
+  background:rgba(5,4,10,.78); backdrop-filter:blur(2px);
+}
+#overlay.show { display:flex; }
+.modal {
+  width:100%; max-width:420px; border-radius:18px; padding:18px 16px;
+  background:linear-gradient(180deg,#221c38 0%,#171226 100%);
+  border:1px solid #3c3260; box-shadow:0 14px 42px rgba(0,0,0,.7);
+  animation:modalPop .22s ease; text-align:center;
+}
+@keyframes modalPop { from{transform:scale(.85) translateY(14px);opacity:0;} to{transform:scale(1) translateY(0);opacity:1;} }
+.modal.shaking { animation:shake .3s linear; }
+@keyframes shake {
+  0%,100% { transform:translate(0,0); }
+  20% { transform:translate(-7px,3px); }
+  40% { transform:translate(7px,-3px); }
+  60% { transform:translate(-5px,-2px); }
+  80% { transform:translate(5px,2px); }
+}
+#boardWrap.shaking { animation:shake .3s linear; }
+.m-title { font-size:20px; font-weight:800; margin-bottom:4px; }
+.m-title.boss { color:#ff7a6a; text-shadow:0 0 14px rgba(255,90,70,.45); }
+.m-sub { font-size:12.5px; color:#9a92b5; margin-bottom:10px; }
+.m-badges { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; min-height:0; margin-bottom:8px; }
+.m-rows { text-align:left; font-size:14.5px; line-height:2.1; margin:8px 4px 12px; }
+.m-rows .row { display:flex; justify-content:space-between; border-bottom:1px dashed #2e2749; }
+.m-btn {
+  width:100%; min-height:54px; border-radius:13px; font-size:16px; font-weight:800; margin-top:8px;
+  background:linear-gradient(180deg,#8358e8,#5c39b8); color:#fff; border:1px solid #9d7cf0;
+}
+.m-btn.gold { background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703; border-color:#ffdf94; }
+.m-btn.dark { background:linear-gradient(180deg,#3a3355,#2a2542); border-color:#4c4472; }
+.m-btn.danger { background:linear-gradient(180deg,#d15050,#a12f2f); border-color:#ea8a8a; }
+.m-btn:not(:disabled):active { transform:scale(.98); }
+
+/* 전투 */
+.enemyRow { display:flex; gap:10px; justify-content:center; margin:8px 0 4px; }
+.enemy { flex:1; max-width:150px; transition:opacity .4s, filter .4s; }
+.enemy.dead { opacity:.22; filter:grayscale(1); }
+.e-sprite { font-size:52px; line-height:1.15; transition:transform .12s, filter .12s; display:inline-block; }
+.e-sprite.boss { font-size:68px; }
+.hitflash .e-sprite { filter:brightness(2.6) saturate(.3); transform:scale(1.12) rotate(-6deg); }
+.e-name { font-size:12px; color:#c9c2e2; font-weight:700; margin-top:2px; }
+.ehp { height:9px; border-radius:5px; background:#241f33; border:1px solid #443b60; overflow:hidden; margin-top:4px; }
+.ehpfill { height:100%; background:linear-gradient(90deg,#e05555,#f08a6a); transition:width .3s ease; }
+.ehptext { font-size:10.5px; color:#9a92b5; margin-top:2px; }
+#btMsg { min-height:22px; font-size:13.5px; font-weight:700; color:#ffd76a; margin:6px 0; }
+.pl-row { display:flex; align-items:center; gap:10px; margin:4px 2px 10px; }
+.pl-sprite { font-size:40px; transition:transform .12s, filter .12s; }
+.pl-row.hitflash .pl-sprite { filter:brightness(2.4); transform:scale(1.08) rotate(5deg); }
+.pl-hp { flex:1; }
+.actions { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.act-btn {
+  min-height:56px; border-radius:13px; font-size:15px; font-weight:800; line-height:1.3;
+  border:1px solid #55488a; background:linear-gradient(180deg,#3d3260,#2c2547);
+}
+.act-btn.atk { background:linear-gradient(180deg,#c04848,#8e2c2c); border-color:#e88a8a; }
+.act-btn.def { background:linear-gradient(180deg,#3a5f8a,#28425f); border-color:#7aa8d8; }
+.act-btn.pot { background:linear-gradient(180deg,#2e7a4f,#1e5236); border-color:#6cc094; }
+.act-btn:not(:disabled):active { transform:scale(.96); }
+.act-btn small { display:block; font-size:10px; font-weight:600; opacity:.85; }
+
+/* 상점 */
+.shop-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 2px; border-bottom:1px dashed #2e2749; }
+.shop-item .info { text-align:left; font-size:14px; font-weight:700; }
+.shop-item .info small { display:block; font-size:11px; color:#9a92b5; font-weight:400; }
+.buy-btn {
+  min-width:96px; min-height:48px; border-radius:11px; font-weight:800; font-size:13.5px;
+  background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703;
+}
+
+/* 플로팅 텍스트 */
+#floats { position:absolute; inset:0; z-index:70; pointer-events:none; overflow:hidden; }
+.float {
+  position:absolute; transform:translate(-50%,-50%); font-weight:900; font-size:17px;
+  text-shadow:0 2px 4px rgba(0,0,0,.9); animation:floatUp .95s ease-out forwards; white-space:nowrap;
+}
+.float.dmg  { color:#ff6a5e; }
+.float.crit { color:#ffb03a; font-size:22px; }
+.float.heal { color:#7ee787; }
+.float.gold { color:#ffd76a; }
+.float.info { color:#b8aef5; font-size:14px; }
+@keyframes floatUp {
+  0%   { opacity:0; margin-top:6px; }
+  12%  { opacity:1; margin-top:0; }
+  100% { opacity:0; margin-top:-46px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== 마을 화면 ===== -->
+  <div id="screen-town" class="screen">
+    <div class="town-title">
+      <h1>🎲 다이스 던전</h1>
+      <p>보드 × 로그라이트 던전 RPG — 플레이어블 프로토타입</p>
+    </div>
+    <div class="panel soul-panel">💠 소울스톤 <span class="num" id="townSoul">0</span></div>
+    <div class="section-label">🏰 마을 — 훈련소 (영구 성장)</div>
+    <div class="panel" id="trainPanel"></div>
+    <div class="section-label">🧝 출전 스탯</div>
+    <div class="panel stat-preview" id="statPreview"></div>
+    <button id="btnStartRun" onclick="startRun()">⚔️ 던전 입장</button>
+    <button class="town-reset" onclick="resetMeta()">메타 성장 초기화 (개발용)</button>
+  </div>
+
+  <!-- ===== 런(던전) 화면 ===== -->
+  <div id="screen-run" class="screen">
+    <div class="hud">
+      <div class="floor">🏰 <span id="hudFloor">1</span>층</div>
+      <div class="gold">💰 <span id="hudGold">0</span></div>
+      <div class="soul">💠 <span id="hudSoul">0</span></div>
+    </div>
+    <div class="hpwrap">
+      <div class="hpbar"><div class="hpfill" id="hpFill"></div><span id="hpText">100 / 100</span></div>
+      <div class="substats" id="subStats">⚔️12 🛡️5</div>
+    </div>
+    <div id="boardWrap">
+      <div id="board"></div>
+    </div>
+    <div id="logPanel"></div>
+    <div class="bottomBar">
+      <button id="btnFieldPotion" onclick="useFieldPotion()">🧪 ×2<br><small style="font-size:10px;font-weight:600">HP 40%</small></button>
+      <button id="btnRoll" onclick="rollDice()">🎲 주사위 굴리기</button>
+    </div>
+  </div>
+
+  <div id="overlay"></div>
+  <div id="floats"></div>
+</div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+ * 밸런스 상수 — prototype/DiceDungeon.Core/Data/Balance.cs (v2) 그대로 이식
+ * ===================================================================== */
+const B = {
+  BOARD_SIZE: 24,
+  FINAL_FLOOR: 15,
+
+  PLAYER_HP: 100, PLAYER_ATK: 12, PLAYER_DEF: 5, PLAYER_SPD: 10,
+  PLAYER_CRIT: 0.10, CRIT_MULT: 1.5,
+
+  monsterHp:  f => Math.round(30 * Math.pow(1.28, f - 1)),
+  monsterAtk: f => Math.round(5  * Math.pow(1.19, f - 1)),
+  monsterDef: f => Math.round(2  * Math.pow(1.18, f - 1)),
+  SOLO_MONSTER_FLOORS: 2,
+
+  BOSS_HP_MULT: 2.5, BOSS_ATK_MULT: 1.2,
+  ELITE_HP_MULT: 1.8, ELITE_ATK_MULT: 1.3,
+  MONSTER_CRIT: 0.05,
+
+  FLOOR_CLEAR_HEAL: 0.35,
+
+  TILE_BATTLE: 0.50, TILE_ELITE: 0.08, TILE_TREASURE: 0.15,
+  TILE_EVENT: 0.12, TILE_TRAP: 0.10,
+
+  CAPTURED_HEAL: 0.15, REST_HEAL: 0.30,
+  TRAP_DMG: 0.10, TRAP_AVOID: 0.30, MIMIC_CHANCE: 0.08,
+
+  battleGold:   f => 12 + f * 6,
+  treasureGold: f => 20 + f * 10,
+  lapBonusGold: f => 40 + f * 15,
+
+  gearAtk: f => 2 + Math.floor(f / 2),
+  gearDef: f => 1 + Math.floor(f / 4),
+  gearHp:  f => 10 + f * 3,
+
+  potionPrice: f => 30 + f * 10,
+  gearPrice:   f => 60 + f * 25,
+  POTION_HEAL: 0.40,
+  START_POTIONS: 2,
+
+  soulstonesForRun: (floors, kills) => floors * 10 + kills,
+  DEATH_PENALTY: 0.7
+};
+
+/* 연출 타이밍 */
+const T = { DICE: 500, DICE_TICK: 60, STEP: 150, LAND: 260, HIT: 180, MOB_GAP: 560, WIN_CLOSE: 850 };
+
+/* 층 테마 (01-게임기획서 5) */
+const THEMES = [
+  { min:1,  max:3,  name:'버려진 지하묘지', mobs:['🧟','💀','👻'], mobName:'언데드',   boss:'🧛', bossName:'묘지기 군주' },
+  { min:4,  max:6,  name:'곰팡이 동굴',     mobs:['🍄','🕷️','🐍'], mobName:'독물',     boss:'🦂', bossName:'맹독 여왕' },
+  { min:7,  max:9,  name:'용암 대장간',     mobs:['👺','🦎','🔥'], mobName:'화염정령', boss:'🐲', bossName:'용암 드레이크' },
+  { min:10, max:12, name:'얼어붙은 성채',   mobs:['⛄','🐺','🦉'], mobName:'빙괴',     boss:'🦖', bossName:'서리 폭군' },
+  { min:13, max:15, name:'심연',            mobs:['👾','🐙','🎃'], mobName:'심연체',   boss:'😈', bossName:'심연의 군주' }
+];
+const themeOf = f => THEMES.find(t => f >= t.min && f <= t.max) || THEMES[THEMES.length - 1];
+
+const TILE_DEFS = {
+  start:    { e:'🌀', n:'출발' },
+  battle:   { e:'💀', n:'전투' },
+  elite:    { e:'☠️', n:'정예' },
+  treasure: { e:'📦', n:'보물' },
+  shop:     { e:'⚖️', n:'상점' },
+  rest:     { e:'🔥', n:'쉼터' },
+  trap:     { e:'⚠️', n:'함정' },
+  event:    { e:'❓', n:'이벤트' }
+};
+
+/* =====================================================================
+ * 메타 성장 (마을 훈련소) — localStorage
+ * ===================================================================== */
+const SAVE_KEY = 'diceDungeonMeta_v1';
+const TRAIN = {
+  hp:  { icon:'❤️', label:'체력 단련', gain:25, unit:'HP' },
+  atk: { icon:'⚔️', label:'공격 훈련', gain:3,  unit:'공격' },
+  def: { icon:'🛡️', label:'방어 훈련', gain:2,  unit:'방어' }
+};
+const trainCost = lv => Math.floor(50 * Math.pow(1.5, lv));
+
+let meta = { soul: 0, hp: 0, atk: 0, def: 0 };
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const m = JSON.parse(raw);
+      meta = {
+        soul: m.soul | 0,
+        hp: m.hp | 0, atk: m.atk | 0, def: m.def | 0
+      };
+    }
+  } catch (e) { /* 저장 손상 시 초기값 */ }
+}
+function saveMeta() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch (e) { /* private mode */ }
+}
+function resetMeta() {
+  if (!confirm('메타 성장(소울스톤·훈련 단계)을 모두 초기화할까요?')) return;
+  meta = { soul: 0, hp: 0, atk: 0, def: 0 };
+  saveMeta();
+  renderTown();
+}
+const bonusHp  = () => meta.hp  * TRAIN.hp.gain;
+const bonusAtk = () => meta.atk * TRAIN.atk.gain;
+const bonusDef = () => meta.def * TRAIN.def.gain;
+
+/* =====================================================================
+ * 공용 헬퍼
+ * ===================================================================== */
+const $ = id => document.getElementById(id);
+const randInt = (min, maxExcl) => min + Math.floor(Math.random() * (maxExcl - min)); // C# rng.Next 계열
+const chance = p => Math.random() < p;
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $('screen-' + name).classList.add('active');
+}
+function overlay(html, extraCls) {
+  const o = $('overlay');
+  o.innerHTML = '<div class="modal ' + (extraCls || '') + '" id="modalBox">' + html + '</div>';
+  o.classList.add('show');
+}
+function closeOverlay() {
+  const o = $('overlay');
+  o.classList.remove('show');
+  o.innerHTML = '';
+}
+
+/* 플로팅 텍스트: 대상 요소 중앙 기준 */
+function floatText(el, text, cls) {
+  if (!el) return;
+  const appRect = $('app').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const s = document.createElement('span');
+  s.className = 'float ' + (cls || '');
+  s.textContent = text;
+  s.style.left = (r.left - appRect.left + r.width / 2) + 'px';
+  s.style.top  = (r.top  - appRect.top  + r.height * 0.28) + 'px';
+  $('floats').appendChild(s);
+  setTimeout(() => s.remove(), 1000);
+}
+function shake(el) {
+  if (!el) return;
+  el.classList.remove('shaking');
+  void el.offsetWidth; // 리플로우로 애니메이션 재시작
+  el.classList.add('shaking');
+  setTimeout(() => el.classList.remove('shaking'), 320);
+}
+function flashHit(el) {
+  if (!el) return;
+  el.classList.add('hitflash');
+  setTimeout(() => el.classList.remove('hitflash'), T.HIT);
+}
+
+/* 게임 로그 (최근 3줄) */
+let logs = [];
+function log(msg) {
+  logs.push(msg);
+  if (logs.length > 3) logs = logs.slice(-3);
+  $('logPanel').innerHTML = logs
+    .map((m, i) => '<div class="l' + (i + 3 - logs.length) + '">' + m + '</div>')
+    .join('');
+}
+
+/* =====================================================================
+ * 마을 렌더링
+ * ===================================================================== */
+function renderTown() {
+  $('townSoul').textContent = meta.soul;
+
+  $('trainPanel').innerHTML = Object.keys(TRAIN).map(k => {
+    const t = TRAIN[k], lv = meta[k], cost = trainCost(lv);
+    const afford = meta.soul >= cost;
+    return '<div class="train-row">' +
+      '<div class="train-info">' + t.icon + ' ' + t.label + ' <b>Lv.' + lv + '</b>' +
+      '<small>' + t.unit + ' +' + t.gain + ' / 단계 (현재 +' + (lv * t.gain) + ')</small></div>' +
+      '<button class="train-btn" onclick="train(\'' + k + '\')"' + (afford ? '' : ' disabled') + '>' +
+      '💠 ' + cost + '<br><small style="font-size:10px">강화하기</small></button></div>';
+  }).join('');
+
+  $('statPreview').innerHTML =
+    '<div class="row"><span>❤️ HP</span><span>' + B.PLAYER_HP +
+      (bonusHp() ? ' <span class="bonus">+' + bonusHp() + '</span>' : '') + '</span></div>' +
+    '<div class="row"><span>⚔️ 공격</span><span>' + B.PLAYER_ATK +
+      (bonusAtk() ? ' <span class="bonus">+' + bonusAtk() + '</span>' : '') + '</span></div>' +
+    '<div class="row"><span>🛡️ 방어</span><span>' + B.PLAYER_DEF +
+      (bonusDef() ? ' <span class="bonus">+' + bonusDef() + '</span>' : '') + '</span></div>' +
+    '<div class="row"><span>🧪 포션</span><span>' + B.START_POTIONS + '개 (전투 중 HP 40% 회복)</span></div>';
+}
+function train(stat) {
+  const cost = trainCost(meta[stat]);
+  if (meta.soul < cost) return;
+  meta.soul -= cost;
+  meta[stat]++;
+  saveMeta();
+  renderTown();
+}
+
+/* =====================================================================
+ * 런 상태
+ * ===================================================================== */
+let run = null;   // 현재 런
+let bt = null;    // 현재 전투
+let busy = false; // 입력 잠금 (연출 중)
+
+function startRun() {
+  run = {
+    floor: 1, floorsCleared: 0,
+    gold: 0, potions: B.START_POTIONS,
+    kills: 0, gearCount: 0, diceRolls: 0,
+    pos: 0, tiles: [],
+    alive: true,
+    player: {
+      maxHp: B.PLAYER_HP + bonusHp(), hp: B.PLAYER_HP + bonusHp(),
+      atk: B.PLAYER_ATK + bonusAtk(), def: B.PLAYER_DEF + bonusDef(),
+      spd: B.PLAYER_SPD, crit: B.PLAYER_CRIT
+    }
+  };
+  logs = [];
+  showScreen('run');
+  genFloor();
+  log('🏰 던전 1층 — ' + themeOf(1).name + '에 진입했다.');
+  busy = false;
+  updateHUD();
+}
+
+/* ===== 층 생성 — FloorGenerator.cs와 동일 규칙 ===== */
+function rollTileType() {
+  const v = Math.random();
+  let acc = B.TILE_BATTLE;
+  if (v < acc) return 'battle';
+  acc += B.TILE_ELITE;
+  if (v < acc) return 'elite';
+  acc += B.TILE_TREASURE;
+  if (v < acc) return 'treasure';
+  acc += B.TILE_EVENT;
+  if (v < acc) return 'event';
+  acc += B.TILE_TRAP;
+  if (v < acc) return 'trap';
+  return 'battle'; // 잔여 확률은 전투로
+}
+function genFloor() {
+  const size = B.BOARD_SIZE;
+  const types = new Array(size).fill(null);
+  types[0] = 'start';
+  // 보장 배치: 상점 1, 쉼터 1 (서로 다른 비출발 칸)
+  const shopI = randInt(1, size);
+  let restI;
+  do { restI = randInt(1, size); } while (restI === shopI);
+  types[shopI] = 'shop';
+  types[restI] = 'rest';
+  for (let i = 1; i < size; i++) {
+    if (i === shopI || i === restI) continue;
+    types[i] = rollTileType();
+  }
+  run.tiles = types.map((t, i) => ({ index: i, type: t, captured: false }));
+  run.pos = 0;
+  renderBoard();
+  placeToken(false);
+  updateCenter();
+}
+
+/* ===== 보드 렌더링: 7×7 그리드 둘레 = 24칸 ===== */
+function tileGridPos(i) {
+  if (i <= 6)  return { r: 6,       c: i };       // 하단: 좌→우
+  if (i <= 12) return { r: 12 - i,  c: 6 };       // 우측: 하→상
+  if (i <= 18) return { r: 0,       c: 18 - i };  // 상단: 우→좌
+  return       { r: i - 18,         c: 0 };       // 좌측: 상→하
+}
+function renderBoard() {
+  const board = $('board');
+  board.innerHTML = '';
+  run.tiles.forEach(t => {
+    const p = tileGridPos(t.index);
+    const d = document.createElement('div');
+    d.className = 'tile ' + t.type + (t.captured ? ' captured' : '');
+    d.id = 'tile-' + t.index;
+    d.style.gridRow = (p.r + 1);
+    d.style.gridColumn = (p.c + 1);
+    d.textContent = TILE_DEFS[t.type].e;
+    board.appendChild(d);
+  });
+  const center = document.createElement('div');
+  center.className = 'board-center';
+  center.innerHTML =
+    '<div class="bc-theme" id="bcTheme"></div>' +
+    '<div class="bc-floor" id="bcFloor"></div>' +
+    '<div class="dicewrap"><div class="die" id="die1">?</div><div class="die" id="die2">?</div></div>' +
+    '<div class="bc-badges" id="bcBadges"></div>' +
+    '<div class="bc-hint" id="bcHint"></div>';
+  board.appendChild(center);
+  const token = document.createElement('div');
+  token.id = 'token';
+  token.textContent = '🤺';
+  board.appendChild(token);
+}
+function updateCenter() {
+  $('bcTheme').textContent = themeOf(run.floor).name;
+  $('bcFloor').textContent = run.floor + 'F';
+  $('bcHint').textContent = '🚪 완주까지 ' + (B.BOARD_SIZE - run.pos) + '칸 → 보스전';
+}
+function placeToken(hop) {
+  const el = $('tile-' + run.pos);
+  const token = $('token');
+  if (!el || !token) return;
+  if (!hop) token.classList.add('notrans');
+  token.style.left = (el.offsetLeft + el.offsetWidth / 2) + 'px';
+  token.style.top  = (el.offsetTop  + el.offsetHeight * 0.42) + 'px';
+  if (!hop) {
+    void token.offsetWidth;
+    token.classList.remove('notrans');
+  } else {
+    token.classList.remove('hopping');
+    void token.offsetWidth;
+    token.classList.add('hopping');
+  }
+  document.querySelectorAll('.tile.cur').forEach(t => t.classList.remove('cur'));
+  el.classList.add('cur');
+}
+
+/* ===== HUD ===== */
+function updateHUD() {
+  if (!run) return;
+  const p = run.player;
+  $('hudFloor').textContent = run.floor;
+  $('hudGold').textContent = run.gold;
+  $('hudSoul').textContent = meta.soul;
+  const ratio = Math.max(0, p.hp / p.maxHp);
+  const fill = $('hpFill');
+  fill.style.width = (ratio * 100) + '%';
+  fill.style.background = ratio > 0.5
+    ? 'linear-gradient(90deg,#4fd06a,#8ce07a)'
+    : ratio > 0.25
+      ? 'linear-gradient(90deg,#e0a03a,#f0c05a)'
+      : 'linear-gradient(90deg,#d84848,#f07a5a)';
+  $('hpText').textContent = '❤️ ' + p.hp + ' / ' + p.maxHp;
+  $('subStats').textContent = '⚔️' + p.atk + ' 🛡️' + p.def;
+  $('btnFieldPotion').innerHTML = '🧪 ×' + run.potions + '<br><small style="font-size:10px;font-weight:600">HP 40%</small>';
+  $('btnFieldPotion').disabled = busy || run.potions <= 0 || p.hp >= p.maxHp;
+  $('btnRoll').disabled = busy;
+}
+function setBusy(v) {
+  busy = v;
+  updateHUD();
+}
+
+/* ===== 플레이어 회복/피해 ===== */
+function healRatio(ratio, srcLabel) {
+  const p = run.player;
+  const amt = Math.round(p.maxHp * ratio); // Unit.HealRatio와 동일 (반올림)
+  const real = Math.min(p.maxHp - p.hp, amt);
+  p.hp = Math.min(p.maxHp, p.hp + amt);
+  if (real > 0) floatText($('token') || $('hpFill'), '+' + real, 'heal');
+  if (srcLabel) log('💚 ' + srcLabel + ' HP +' + real);
+  updateHUD();
+  return real;
+}
+function damagePlayerField(dmg, srcLabel) {
+  const p = run.player;
+  p.hp = Math.max(0, p.hp - dmg);
+  shake($('boardWrap'));
+  floatText($('token'), '-' + dmg, 'dmg');
+  log('💥 ' + srcLabel + ' 피해 -' + dmg);
+  updateHUD();
+  if (p.hp <= 0) { die(); return false; }
+  return true;
+}
+function addGold(g, label) {
+  run.gold += g;
+  floatText($('token'), '+' + g + ' 💰', 'gold');
+  if (label) log('💰 ' + label + ' 골드 +' + g);
+  updateHUD();
+}
+function addGear(silent) {
+  const f = run.floor, p = run.player;
+  const a = B.gearAtk(f), d = B.gearDef(f), h = B.gearHp(f);
+  run.gearCount++;
+  p.atk += a; p.def += d;
+  p.maxHp += h; p.hp = Math.min(p.maxHp, p.hp + h);
+  if (!silent) floatText($('token'), '🗡️ 장비!', 'info');
+  log('🗡️ 장비 획득! ⚔️+' + a + ' 🛡️+' + d + ' ❤️+' + h);
+  updateHUD();
+}
+function useFieldPotion() {
+  if (busy || !run || !run.alive) return;
+  if (run.potions <= 0 || run.player.hp >= run.player.maxHp) return;
+  run.potions--;
+  healRatio(B.POTION_HEAL, '포션 사용!');
+  updateHUD();
+}
+
+/* =====================================================================
+ * 주사위 → 이동
+ * ===================================================================== */
+function rollDice() {
+  if (busy || !run || !run.alive) return;
+  setBusy(true);
+  $('bcBadges').innerHTML = '';
+  const d1El = $('die1'), d2El = $('die2');
+  d1El.classList.add('rolling');
+  d2El.classList.add('rolling');
+  const tick = setInterval(() => {
+    d1El.textContent = randInt(1, 7);
+    d2El.textContent = randInt(1, 7);
+  }, T.DICE_TICK);
+
+  setTimeout(() => {
+    clearInterval(tick);
+    const d1 = randInt(1, 7), d2 = randInt(1, 7);
+    const info = { d1: d1, d2: d2, sum: d1 + d2, isDouble: d1 === d2, isSeven: d1 + d2 === 7 };
+    run.diceRolls++;
+    d1El.classList.remove('rolling'); d2El.classList.remove('rolling');
+    d1El.textContent = d1; d2El.textContent = d2;
+    d1El.classList.add('landed'); d2El.classList.add('landed');
+    setTimeout(() => { d1El.classList.remove('landed'); d2El.classList.remove('landed'); }, 320);
+
+    let badges = '';
+    if (info.isDouble) badges += '<div class="badge">✨ 더블! 다음 전투 선제공격</div>';
+    if (info.isSeven)  badges += '<div class="badge">🍀 럭키 7! 크리티컬 +15%</div>';
+    $('bcBadges').innerHTML = badges;
+    log('🎲 주사위: ' + d1 + ' + ' + d2 + ' = ' + info.sum +
+        (info.isDouble ? ' (더블!)' : '') + (info.isSeven ? ' (럭키 7!)' : ''));
+
+    setTimeout(() => moveSteps(info), 380);
+  }, T.DICE);
+}
+
+function moveSteps(info) {
+  const lapComplete = run.pos + info.sum >= B.BOARD_SIZE; // RunController.PlayFloor와 동일 판정
+  let remaining = info.sum;
+  const step = () => {
+    run.pos = (run.pos + 1) % B.BOARD_SIZE;
+    placeToken(true);
+    updateCenter();
+    remaining--;
+    if (remaining > 0) setTimeout(step, T.STEP);
+    else setTimeout(() => land(lapComplete, info), T.LAND);
+  };
+  step();
+}
+
+function land(lapComplete, info) {
+  if (lapComplete) {
+    // 완주 보너스 → 즉시 보스전 (프로토타입 규칙: 착지 칸 이벤트는 생략)
+    const g = B.lapBonusGold(run.floor);
+    addGold(g, '한 바퀴 완주!');
+    log('👑 보스 게이트가 열렸다...');
+    setTimeout(() => startBossBattle(info), 850);
+    return;
+  }
+  resolveTile(info);
+}
+
+/* =====================================================================
+ * 타일 이벤트 — RunController.ResolveTile과 동일 규칙
+ * ===================================================================== */
+function endTurn() {
+  if (!run || !run.alive) return;
+  setBusy(false);
+}
+
+function resolveTile(info) {
+  const tile = run.tiles[run.pos];
+  const f = run.floor;
+
+  switch (tile.type) {
+    case 'battle':
+    case 'elite': {
+      if (tile.captured) {
+        healRatio(B.CAPTURED_HEAL, '점령지(내 땅)에서 정비.');
+        endTurn();
+        return;
+      }
+      const elite = tile.type === 'elite';
+      startBattle({
+        monsters: makeMonsters(f, elite),
+        info: info,
+        title: elite ? '☠️ 정예 전투!' : '⚔️ 전투!',
+        onWin: () => {
+          tile.captured = true;
+          const el = $('tile-' + tile.index);
+          if (el) el.classList.add('captured');
+          log('🚩 칸을 점령했다! (재방문 시 HP 15% 회복)');
+          addGold(B.battleGold(f) * (elite ? 2 : 1), elite ? '정예 처치! (2배)' : '전투 승리!');
+          if (elite) addGear();
+          endTurn();
+        }
+      });
+      return;
+    }
+
+    case 'treasure': {
+      if (chance(B.MIMIC_CHANCE)) {
+        log('📦 상자가... 움직인다?! 미믹이다!');
+        startBattle({
+          monsters: makeMonsters(f, false, true),
+          info: info,
+          title: '📦 미믹 기습!',
+          onWin: () => { log('📦 미믹을 물리쳤다. (전리품은 없었다...)'); endTurn(); }
+        });
+        return;
+      }
+      if (chance(0.5)) addGear();
+      else addGold(B.treasureGold(f), '보물 상자!');
+      endTurn();
+      return;
+    }
+
+    case 'shop':
+      openShop();
+      return;
+
+    case 'rest':
+      healRatio(B.REST_HEAL, '모닥불에서 휴식.');
+      endTurn();
+      return;
+
+    case 'trap': {
+      if (chance(B.TRAP_AVOID)) {
+        log('🤸 함정을 재빠르게 회피했다!');
+        floatText($('token'), '회피!', 'info');
+        endTurn();
+        return;
+      }
+      const dmg = Math.floor(run.player.maxHp * B.TRAP_DMG);
+      if (damagePlayerField(dmg, '가시 함정!')) endTurn();
+      return;
+    }
+
+    case 'event':
+      openEvent();
+      return;
+
+    default: // start 등
+      endTurn();
+      return;
+  }
+}
+
+/* ===== 이벤트 칸 (RunController.ResolveEvent 확률 그대로) ===== */
+function openEvent() {
+  const f = run.floor;
+  const v = Math.random();
+  let text, apply;
+  if (v < 0.40) {
+    const g = B.treasureGold(f);
+    text = '무너진 제단 아래에서 금화 주머니를 발견했다!<br><b style="color:#ffd76a">💰 골드 +' + g + '</b>';
+    apply = () => { addGold(g, '이벤트:'); endTurn(); };
+  } else if (v < 0.75) {
+    const dmg = Math.floor(run.player.maxHp * 0.08);
+    text = '어둠 속에서 무언가가 스치고 지나갔다...<br><b style="color:#ff6a5e">💢 피해 -' + dmg + '</b>';
+    apply = () => { if (damagePlayerField(dmg, '불길한 기운!')) endTurn(); };
+  } else {
+    text = '떠돌이 대장장이가 낡은 장비를 건네주었다!<br><b style="color:#b8aef5">🗡️ 장비 획득</b>';
+    apply = () => { addGear(); endTurn(); };
+  }
+  overlay(
+    '<div class="m-title">❓ 이벤트</div>' +
+    '<div class="m-sub">' + themeOf(f).name + ' ' + f + '층</div>' +
+    '<p style="font-size:14.5px;line-height:1.8;margin:10px 0 4px">' + text + '</p>' +
+    '<button class="m-btn" id="btnEventOk">확인</button>'
+  );
+  $('btnEventOk').onclick = () => { closeOverlay(); apply(); };
+}
+
+/* ===== 상점 ===== */
+function openShop() {
+  renderShop();
+  log('⚖️ 상인을 만났다.');
+}
+function renderShop() {
+  const f = run.floor;
+  const pp = B.potionPrice(f), gp = B.gearPrice(f);
+  overlay(
+    '<div class="m-title">⚖️ 던전 상점</div>' +
+    '<div class="m-sub">' + f + '층 시세 — 보유 💰 <b id="shopGold">' + run.gold + '</b></div>' +
+    '<div class="shop-item"><div class="info">🧪 포션<small>전투/이동 중 HP 40% 회복 (보유 ' +
+      '<span id="shopPot">' + run.potions + '</span>개)</small></div>' +
+      '<button class="buy-btn" id="buyPot" onclick="buyPotion()">💰 ' + pp + '</button></div>' +
+    '<div class="shop-item"><div class="info">🗡️ 장비<small>⚔️+' + B.gearAtk(f) + ' 🛡️+' + B.gearDef(f) +
+      ' ❤️+' + B.gearHp(f) + ' (층 비례 성장)</small></div>' +
+      '<button class="buy-btn" id="buyGear" onclick="buyGear()">💰 ' + gp + '</button></div>' +
+    '<button class="m-btn dark" onclick="closeShop()">나가기</button>'
+  );
+  refreshShopButtons();
+}
+function refreshShopButtons() {
+  const f = run.floor;
+  $('shopGold').textContent = run.gold;
+  $('shopPot').textContent = run.potions;
+  $('buyPot').disabled = run.gold < B.potionPrice(f);
+  $('buyGear').disabled = run.gold < B.gearPrice(f);
+}
+function buyPotion() {
+  const price = B.potionPrice(run.floor);
+  if (run.gold < price) return;
+  run.gold -= price;
+  run.potions++;
+  log('🧪 포션 구매 (-' + price + 'G)');
+  updateHUD();
+  refreshShopButtons();
+}
+function buyGear() {
+  const price = B.gearPrice(run.floor);
+  if (run.gold < price) return;
+  run.gold -= price;
+  addGear(true);
+  updateHUD();
+  refreshShopButtons();
+}
+function closeShop() {
+  closeOverlay();
+  endTurn();
+}
+
+/* =====================================================================
+ * 전투 — BattleSimulator.cs 공식 이식 + 수동 턴제 UI
+ * ===================================================================== */
+function makeMonsters(floor, elite, mimic) {
+  const th = themeOf(floor);
+  const hp = B.monsterHp(floor), atk = B.monsterAtk(floor), def = B.monsterDef(floor);
+  if (elite) {
+    return [{
+      name: '정예 ' + th.mobName, emoji: '👹',
+      maxHp: Math.floor(hp * B.ELITE_HP_MULT), hp: Math.floor(hp * B.ELITE_HP_MULT),
+      atk: Math.floor(atk * B.ELITE_ATK_MULT), def: def, spd: 9, crit: B.MONSTER_CRIT
+    }];
+  }
+  if (mimic) {
+    return [{ name: '미믹', emoji: '📦', maxHp: hp, hp: hp, atk: atk, def: def, spd: 8, crit: B.MONSTER_CRIT }];
+  }
+  // 1~2층은 1마리 고정 (튜토리얼 보호), 이후 1~2마리
+  const count = floor <= B.SOLO_MONSTER_FLOORS ? 1 : randInt(1, 3);
+  const list = [];
+  for (let i = 0; i < count; i++) {
+    list.push({
+      name: th.mobName + (count > 1 ? ' ' + (i + 1) : ''),
+      emoji: th.mobs[randInt(0, th.mobs.length)],
+      maxHp: hp, hp: hp, atk: atk, def: def, spd: 8, crit: B.MONSTER_CRIT
+    });
+  }
+  return list;
+}
+function makeBoss(floor) {
+  const th = themeOf(floor);
+  return [{
+    name: th.bossName, emoji: th.boss, isBoss: true,
+    maxHp: Math.floor(B.monsterHp(floor) * B.BOSS_HP_MULT),
+    hp:    Math.floor(B.monsterHp(floor) * B.BOSS_HP_MULT),
+    atk:   Math.floor(B.monsterAtk(floor) * B.BOSS_ATK_MULT),
+    def:   B.monsterDef(floor), spd: 9, crit: B.MONSTER_CRIT
+  }];
+}
+
+/* 피해 공식: ATK × 100/(100+DEF) × 크리 1.5 (02-시스템설계 1.2) */
+function calcDamage(atk, def, critChance) {
+  let dmg = atk * (100 / (100 + def));
+  const crit = chance(critChance);
+  if (crit) dmg *= B.CRIT_MULT;
+  return { dmg: Math.max(1, Math.round(dmg)), crit: crit };
+}
+
+function startBossBattle(info) {
+  startBattle({
+    monsters: makeBoss(run.floor),
+    info: info,
+    title: '👑 보스전 — ' + themeOf(run.floor).bossName,
+    isBoss: true,
+    onWin: () => floorClear()
+  });
+}
+
+function startBattle(cfg) {
+  bt = {
+    monsters: cfg.monsters,
+    critBonus: cfg.info && cfg.info.isSeven ? 0.15 : 0, // 럭키세븐 (02-시스템설계 1.3)
+    playerFirst: !!(cfg.info && cfg.info.isDouble),      // 더블 선제공격
+    defending: false,
+    isBoss: !!cfg.isBoss,
+    title: cfg.title,
+    onWin: cfg.onWin,
+    locked: true
+  };
+  let badges = '';
+  if (bt.playerFirst) badges += '<div class="badge">✨ 더블 — 선제공격!</div>';
+  if (bt.critBonus > 0) badges += '<div class="badge">🍀 럭키 7 — 크리티컬 +15%</div>';
+
+  const enemies = bt.monsters.map((m, i) =>
+    '<div class="enemy" id="bt-en-' + i + '">' +
+      '<div class="e-sprite' + (m.isBoss ? ' boss' : '') + '">' + m.emoji + '</div>' +
+      '<div class="e-name">' + m.name + '</div>' +
+      '<div class="ehp"><div class="ehpfill" id="bt-ehp-' + i + '" style="width:100%"></div></div>' +
+      '<div class="ehptext" id="bt-eht-' + i + '">' + m.hp + ' / ' + m.maxHp + '</div>' +
+    '</div>'
+  ).join('');
+
+  overlay(
+    '<div class="m-title' + (bt.isBoss ? ' boss' : '') + '">' + bt.title + '</div>' +
+    '<div class="m-badges">' + badges + '</div>' +
+    '<div class="enemyRow">' + enemies + '</div>' +
+    '<div id="btMsg"></div>' +
+    '<div class="pl-row" id="btPlRow">' +
+      '<div class="pl-sprite">🤺</div>' +
+      '<div class="pl-hp"><div class="hpbar"><div class="hpfill" id="btPhpFill"></div><span id="btPhpText"></span></div></div>' +
+    '</div>' +
+    '<div class="actions">' +
+      '<button class="act-btn atk" id="btnAtk" onclick="btAttack()">⚔️ 공격</button>' +
+      '<button class="act-btn def" id="btnDef" onclick="btDefend()">🛡️ 방어<small>피해 50%↓</small></button>' +
+      '<button class="act-btn pot" id="btnPot" onclick="btPotion()">🧪 포션 ×' + run.potions + '<small>HP 40%</small></button>' +
+    '</div>',
+    'battle'
+  );
+  updateBattleUI();
+  // 더블 여부와 무관하게 플레이어(스피드 10)가 최속이므로 선공 —
+  // 더블은 배지로 표기 (BattleSimulator 턴 순서와 동일한 결과)
+  setTimeout(playerTurnStart, 400);
+}
+
+function battleButtons(enabled) {
+  ['btnAtk', 'btnDef', 'btnPot'].forEach(id => {
+    const el = $(id);
+    if (el) el.disabled = !enabled;
+  });
+  const pot = $('btnPot');
+  if (pot) {
+    pot.innerHTML = '🧪 포션 ×' + run.potions + '<small>HP 40%</small>';
+    if (enabled && (run.potions <= 0 || run.player.hp >= run.player.maxHp)) pot.disabled = true;
+  }
+}
+function btMsg(t) {
+  const el = $('btMsg');
+  if (el) el.textContent = t;
+}
+function updateBattleUI() {
+  bt.monsters.forEach((m, i) => {
+    const fill = $('bt-ehp-' + i), txt = $('bt-eht-' + i), box = $('bt-en-' + i);
+    if (!fill) return;
+    fill.style.width = Math.max(0, m.hp / m.maxHp * 100) + '%';
+    txt.textContent = m.hp + ' / ' + m.maxHp;
+    if (m.hp <= 0) box.classList.add('dead');
+  });
+  const p = run.player;
+  const fill = $('btPhpFill'), txt = $('btPhpText');
+  if (fill) {
+    const r = Math.max(0, p.hp / p.maxHp);
+    fill.style.width = (r * 100) + '%';
+    fill.style.background = r > 0.5 ? 'linear-gradient(90deg,#4fd06a,#8ce07a)'
+      : r > 0.25 ? 'linear-gradient(90deg,#e0a03a,#f0c05a)' : 'linear-gradient(90deg,#d84848,#f07a5a)';
+    txt.textContent = '❤️ ' + p.hp + ' / ' + p.maxHp;
+  }
+  updateHUD();
+}
+
+function playerTurnStart() {
+  if (!bt) return;
+  bt.defending = false;
+  bt.locked = false;
+  btMsg('▶ 당신의 턴');
+  battleButtons(true);
+}
+
+function aliveMonsters() { return bt.monsters.filter(m => m.hp > 0); }
+
+function btAttack() {
+  if (!bt || bt.locked) return;
+  bt.locked = true;
+  battleButtons(false);
+  // 시뮬레이터와 동일: HP가 가장 낮은 적 우선
+  const alive = aliveMonsters().sort((a, b) => a.hp - b.hp);
+  const target = alive[0];
+  const idx = bt.monsters.indexOf(target);
+  const r = calcDamage(run.player.atk, target.def, run.player.crit + bt.critBonus);
+  target.hp = Math.max(0, target.hp - r.dmg);
+
+  const enEl = $('bt-en-' + idx);
+  flashHit(enEl);
+  shake($('modalBox'));
+  floatText(enEl, (r.crit ? '크리! -' : '-') + r.dmg, r.crit ? 'crit' : 'dmg');
+  btMsg(r.crit ? '💥 크리티컬! ' + target.name + '에게 ' + r.dmg : '⚔️ ' + target.name + '에게 ' + r.dmg);
+  updateBattleUI();
+
+  if (target.hp <= 0) {
+    run.kills++;
+    log('☠️ ' + target.name + ' 처치!');
+  }
+  setTimeout(() => {
+    if (aliveMonsters().length === 0) winBattle();
+    else monsterPhase();
+  }, 620);
+}
+
+function btDefend() {
+  if (!bt || bt.locked) return;
+  bt.locked = true;
+  battleButtons(false);
+  bt.defending = true;
+  btMsg('🛡️ 방어 태세! 받는 피해 50% 감소');
+  log('🛡️ 방어 태세를 취했다.');
+  setTimeout(monsterPhase, 420);
+}
+
+function btPotion() {
+  if (!bt || bt.locked) return;
+  if (run.potions <= 0 || run.player.hp >= run.player.maxHp) return;
+  bt.locked = true;
+  battleButtons(false);
+  run.potions--;
+  const amt = Math.round(run.player.maxHp * B.POTION_HEAL);
+  const real = Math.min(run.player.maxHp - run.player.hp, amt);
+  run.player.hp = Math.min(run.player.maxHp, run.player.hp + amt);
+  floatText($('btPlRow'), '+' + real, 'heal');
+  btMsg('🧪 포션! HP +' + real);
+  log('🧪 포션으로 HP ' + real + ' 회복');
+  updateBattleUI();
+  setTimeout(monsterPhase, 520);
+}
+
+function monsterPhase() {
+  const list = aliveMonsters();
+  let i = 0;
+  const next = () => {
+    if (!bt) return;
+    if (i >= list.length) { playerTurnStart(); return; }
+    const m = list[i++];
+    if (m.hp <= 0) { next(); return; }
+    const r = calcDamage(m.atk, run.player.def, m.crit);
+    let dmg = r.dmg;
+    if (bt.defending) dmg = Math.max(1, Math.round(dmg * 0.5)); // 방어: 받는 피해 50%↓
+    run.player.hp = Math.max(0, run.player.hp - dmg);
+
+    const plRow = $('btPlRow');
+    flashHit(plRow);
+    shake($('modalBox'));
+    floatText(plRow, '-' + dmg, r.crit ? 'crit' : 'dmg');
+    btMsg('💢 ' + m.name + '의 공격! -' + dmg + (bt.defending ? ' (방어)' : '') + (r.crit ? ' 크리!' : ''));
+    updateBattleUI();
+
+    if (run.player.hp <= 0) { loseBattle(); return; }
+    setTimeout(next, T.MOB_GAP);
+  };
+  setTimeout(next, 460);
+}
+
+function winBattle() {
+  btMsg('🎉 승리!');
+  const cb = bt.onWin;
+  setTimeout(() => {
+    bt = null;
+    closeOverlay();
+    cb();
+  }, T.WIN_CLOSE);
+}
+function loseBattle() {
+  btMsg('💀 쓰러졌다...');
+  log('💀 전투에서 패배했다...');
+  setTimeout(() => {
+    bt = null;
+    closeOverlay();
+    die();
+  }, 1000);
+}
+
+/* =====================================================================
+ * 층 클리어 / 하강·귀환 / 결산
+ * ===================================================================== */
+function floorClear() {
+  run.floorsCleared = run.floor;
+  const healed = healRatio(B.FLOOR_CLEAR_HEAL); // 층 클리어 35% 회복
+  log('🏆 ' + run.floor + '층 클리어! HP +' + healed + ' (35% 회복)');
+
+  if (run.floor >= B.FINAL_FLOOR) {
+    endRun(false, true);
+    return;
+  }
+  const nf = run.floor + 1;
+  const p = run.player;
+  overlay(
+    '<div class="m-title">🏆 ' + run.floor + '층 클리어!</div>' +
+    '<div class="m-sub">층 클리어 보상: HP 35% 회복 → ❤️ ' + p.hp + ' / ' + p.maxHp + '</div>' +
+    '<div class="m-rows">' +
+      '<div class="row"><span>다음 층</span><span>' + nf + '층 — ' + themeOf(nf).name + '</span></div>' +
+      '<div class="row"><span>몬스터 HP / 공격</span><span>' + B.monsterHp(nf) + ' / ' + B.monsterAtk(nf) + '</span></div>' +
+      '<div class="row"><span>현재 예상 소울스톤</span><span>💠 ' + B.soulstonesForRun(run.floorsCleared, run.kills) + '</span></div>' +
+    '</div>' +
+    '<button class="m-btn danger" onclick="descend()">⬇️ 하강 — 더 큰 보상, 사망 시 70%만 회수</button>' +
+    '<button class="m-btn gold" onclick="retreat()">🏠 귀환 — 소울스톤 100% 회수</button>'
+  );
+}
+function descend() {
+  closeOverlay();
+  run.floor++;
+  genFloor();
+  updateHUD();
+  log('⬇️ ' + run.floor + '층 — ' + themeOf(run.floor).name + '으로 하강했다.');
+  endTurn();
+}
+function retreat() {
+  closeOverlay();
+  endRun(false, false);
+}
+
+function die() {
+  run.alive = false;
+  setBusy(true);
+  endRun(true, false);
+}
+
+function endRun(died, victory) {
+  setBusy(true);
+  let stones = B.soulstonesForRun(run.floorsCleared, run.kills);
+  if (died) stones = Math.floor(stones * B.DEATH_PENALTY);
+  run.pendingStones = stones;
+
+  const title = victory ? '🏆 심연 정복!' : died ? '💀 사망...' : '🏠 귀환 완료';
+  const sub = victory ? '15층 최종 보스를 쓰러뜨렸다! 런 승리!'
+    : died ? run.floor + '층에서 쓰러졌다. 소울스톤 70%만 회수한다.'
+    : '무사히 마을로 돌아왔다. 소울스톤 100% 회수!';
+
+  overlay(
+    '<div class="m-title' + (died ? ' boss' : '') + '">' + title + '</div>' +
+    '<div class="m-sub">' + sub + '</div>' +
+    '<div class="m-rows">' +
+      '<div class="row"><span>클리어한 층</span><span>' + run.floorsCleared + '층</span></div>' +
+      '<div class="row"><span>처치한 몬스터</span><span>' + run.kills + '마리</span></div>' +
+      '<div class="row"><span>획득 장비</span><span>' + run.gearCount + '개</span></div>' +
+      '<div class="row"><span>주사위 굴림</span><span>' + run.diceRolls + '회</span></div>' +
+      '<div class="row"><span>골드 (런 종료 시 소멸)</span><span>💰 ' + run.gold + '</span></div>' +
+      '<div class="row"><span><b>소울스톤 획득</b></span><span><b style="color:#8fd0ff">💠 +' + stones +
+        (died ? ' (70%)' : '') + '</b></span></div>' +
+    '</div>' +
+    '<button class="m-btn gold" onclick="backToTown()">🏰 마을로 돌아가기</button>'
+  );
+}
+function backToTown() {
+  meta.soul += run.pendingStones || 0;
+  saveMeta();
+  run = null;
+  bt = null;
+  busy = false;
+  closeOverlay();
+  renderTown();
+  showScreen('town');
+}
+
+/* =====================================================================
+ * 초기화
+ * ===================================================================== */
+window.addEventListener('resize', () => { if (run) placeToken(false); });
+loadMeta();
+renderTown();
+showScreen('town');
+</script>
+</body>
+</html>

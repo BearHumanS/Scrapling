@@ -14,6 +14,8 @@ namespace DiceDungeon.Core.Battle
 
         public bool IsAlive => Hp > 0;
         public double HpRatio => MaxHp <= 0 ? 0 : (double)Hp / MaxHp;
+        public StatusSet Statuses { get; } = new StatusSet();
+        public int EffectiveSpd => Math.Max(1, Spd - Statuses.SpeedPenalty);
 
         public Unit(string name, int hp, int atk, int def, int spd, double critChance = 0.05)
         {

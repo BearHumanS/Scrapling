@@ -3,16 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 using DiceDungeon.Core.Battle;
 using DiceDungeon.Core.Board;
+using DiceDungeon.Core.Characters;
 using DiceDungeon.Core.Data;
+using DiceDungeon.Core.Meta;
 
 namespace DiceDungeon.Core.Run
 {
-    /// <summary>런 시작 조건. 마을 메타 성장(훈련소·유물)이 여기에 반영된다.</summary>
+    /// <summary>런 시작 조건: 선택 캐릭터 + 마을 메타 성장(훈련소·유물)의 집계.</summary>
     public sealed class RunConfig
     {
+        public CharacterId Character = CharacterId.Knight;
+        public RelicModifiers Mods = new RelicModifiers();
+
+        // 훈련소 보정 (PlayerProfile.Trained* 를 넣는다)
         public int BonusHp { get; set; }
         public int BonusAtk { get; set; }
         public int BonusDef { get; set; }
+
+        public static RunConfig From(PlayerProfile profile, CharacterId character)
+            => new RunConfig
+            {
+                Character = character,
+                Mods = profile.Modifiers(),
+                BonusHp = profile.TrainedHp,
+                BonusAtk = profile.TrainedAtk,
+                BonusDef = profile.TrainedDef,
+            };
     }
 
     public sealed class RunResult
@@ -24,6 +40,7 @@ namespace DiceDungeon.Core.Run
         public int Soulstones { get; set; }
         public int MonstersKilled { get; set; }
         public int DiceRolls { get; set; }
+        public bool ReviveUsed { get; set; }
     }
 
     /// <summary>런 중 의사결정. 실제 게임에서는 UI 입력, 시뮬레이션에서는 휴리스틱.</summary>
@@ -57,24 +74,34 @@ namespace DiceDungeon.Core.Run
     {
         private readonly Rng _rng;
         private readonly IPlayerPolicy _policy;
+        private readonly RunConfig _config;
+        private readonly CharacterClass _character;
         private readonly Unit _player;
+        private readonly List<Skill> _skills;
         private readonly RunResult _result = new RunResult();
 
         private int _gold;
-        private int _potions = 2;
+        private int _potions;
         private int _gearCount;
+        private bool _reviveLeft;
 
         public RunController(int seed, RunConfig config, IPlayerPolicy policy)
         {
             _rng = new Rng(seed);
             _policy = policy;
+            _config = config;
+            _character = CharacterClass.Get(config.Character);
             _player = new Unit(
-                "Player",
-                Balance.PlayerHp + config.BonusHp,
-                Balance.PlayerAtk + config.BonusAtk,
-                Balance.PlayerDef + config.BonusDef,
-                Balance.PlayerSpd,
-                Balance.PlayerCritChance);
+                _character.Name,
+                _character.Hp + config.BonusHp + config.Mods.BonusHp,
+                _character.Atk + config.BonusAtk + config.Mods.BonusAtk,
+                _character.Def + config.BonusDef + config.Mods.BonusDef,
+                _character.Spd,
+                _character.CritChance + config.Mods.BonusCrit);
+            _skills = _character.Skills.Select(s => s.Instance()).ToList();
+            _gold = config.Mods.StartGold;
+            _potions = 2 + config.Mods.StartPotions;
+            _reviveLeft = _character.RevivePerRun;
         }
 
         public RunResult Play()
@@ -99,10 +126,11 @@ namespace DiceDungeon.Core.Run
             }
 
             _result.Gold = _gold;
-            int stones = Balance.SoulstonesForRun(_result.FloorsCleared, _result.MonstersKilled);
+            double stones = Balance.SoulstonesForRun(_result.FloorsCleared, _result.MonstersKilled)
+                            * _config.Mods.SoulstoneMult;
             if (_result.DeathFloor > 0)
-                stones = (int)(stones * Balance.DeathSoulstonePenalty);
-            _result.Soulstones = stones;
+                stones *= Balance.DeathSoulstonePenalty;
+            _result.Soulstones = (int)stones;
             return _result;
         }
 
@@ -112,11 +140,22 @@ namespace DiceDungeon.Core.Run
             var tiles = FloorGenerator.Generate(floor, _rng.Derive());
             var dice = new DiceRoller(_rng.Derive());
             int position = 0;
+            int capturedThisFloor = 0;
+            bool rerollLeft = _character.FloorReroll;
 
             while (true)
             {
                 var roll = dice.Roll();
                 _result.DiceRolls++;
+
+                // 도적 패시브: 층당 1회, 낮은 눈이면 무료 리롤
+                if (rerollLeft && roll.Sum <= 4)
+                {
+                    rerollLeft = false;
+                    roll = dice.Roll();
+                    _result.DiceRolls++;
+                }
+
                 int next = position + roll.Sum;
                 bool lapComplete = next >= Balance.BoardSize;
                 position = next % Balance.BoardSize;
@@ -124,16 +163,16 @@ namespace DiceDungeon.Core.Run
                 if (lapComplete)
                 {
                     // 완주 보너스 → 보스 게이트 (프로토타입: 완주 즉시 보스전)
-                    _gold += Balance.LapBonusGold(floor);
-                    return FightBoss(floor, roll);
+                    _gold += (int)(Balance.LapBonusGold(floor) * _config.Mods.LapGoldMult);
+                    return FightBoss(floor, roll, capturedThisFloor);
                 }
 
-                if (!ResolveTile(tiles[position], floor, roll))
+                if (!ResolveTile(tiles[position], floor, roll, ref capturedThisFloor))
                     return false;
             }
         }
 
-        private bool ResolveTile(Tile tile, int floor, DiceResult roll)
+        private bool ResolveTile(Tile tile, int floor, DiceResult roll, ref int captured)
         {
             switch (tile.Type)
             {
@@ -141,19 +180,21 @@ namespace DiceDungeon.Core.Run
                 case TileType.Elite:
                     if (tile.Captured)
                     {
-                        _player.HealRatio(Balance.CapturedTileHealRatio); // 내 땅: 회복
+                        // 내 땅: 회복 (브루마블의 "내 땅" 변형)
+                        _player.HealRatio(Balance.CapturedTileHealRatio + _config.Mods.CaptureHealBonus);
                         return true;
                     }
                     bool elite = tile.Type == TileType.Elite;
-                    if (!Fight(MakeMonsters(floor, elite), roll)) return false;
+                    if (!Fight(MakeMonsters(floor, elite), roll, captured)) return false;
                     tile.Captured = true;
+                    captured++;
                     _gold += Balance.BattleGold(floor) * (elite ? 2 : 1);
                     if (elite) AddGear(floor);
                     return true;
 
                 case TileType.Treasure:
                     if (_rng.Chance(Balance.MimicChance))
-                        return Fight(MakeMonsters(floor, elite: false), roll); // 미믹 기습
+                        return Fight(MakeMonsters(floor, elite: false), roll, captured); // 미믹 기습
                     if (_rng.Chance(0.5)) AddGear(floor);
                     else _gold += Balance.TreasureGold(floor);
                     return true;
@@ -163,11 +204,12 @@ namespace DiceDungeon.Core.Run
                     return true;
 
                 case TileType.Rest:
-                    _player.HealRatio(Balance.RestHealRatio);
+                    _player.HealRatio(Balance.RestHealRatio * (_character.DoubleRestHeal ? 2 : 1)
+                                      + _config.Mods.RestHealBonus);
                     return true;
 
                 case TileType.Trap:
-                    if (!_rng.Chance(Balance.TrapAvoidChance))
+                    if (!_rng.Chance(Balance.TrapAvoidChance + _config.Mods.TrapAvoidBonus))
                         _player.TakeDamage((int)(_player.MaxHp * Balance.TrapDamageRatio));
                     return _player.IsAlive;
 
@@ -184,6 +226,10 @@ namespace DiceDungeon.Core.Run
         {
             // 프로토타입 이벤트 3종: 횡재 / 손해 / 장비 (본편은 이벤트 30종 테이블화)
             double v = _rng.NextDouble();
+            // 마법사 패시브: 선택지 +1 → 나쁜 결과를 한 번 다시 굴림
+            if (_character.BestEventChoice && v >= 0.40 && v < 0.75)
+                v = _rng.NextDouble();
+
             if (v < 0.40) _gold += Balance.TreasureGold(floor);
             else if (v < 0.75) _player.TakeDamage((int)(_player.MaxHp * 0.08));
             else AddGear(floor);
@@ -191,14 +237,18 @@ namespace DiceDungeon.Core.Run
 
         private void ShopVisit(int floor)
         {
-            if (_player.HpRatio < 0.6 && _gold >= Balance.PotionPrice(floor))
+            double discount = 1.0 - _config.Mods.ShopDiscount;
+            int potionPrice = (int)(Balance.PotionPrice(floor) * discount);
+            int gearPrice = (int)(Balance.GearPrice(floor) * discount);
+
+            if (_player.HpRatio < 0.6 && _gold >= potionPrice)
             {
-                _gold -= Balance.PotionPrice(floor);
+                _gold -= potionPrice;
                 _potions++;
             }
-            while (_gold >= Balance.GearPrice(floor))
+            while (_gold >= gearPrice)
             {
-                _gold -= Balance.GearPrice(floor);
+                _gold -= gearPrice;
                 AddGear(floor);
             }
         }
@@ -229,17 +279,17 @@ namespace DiceDungeon.Core.Run
             return list;
         }
 
-        private bool FightBoss(int floor, DiceResult roll)
+        private bool FightBoss(int floor, DiceResult roll, int captured)
         {
             var boss = new Unit(
                 "Boss",
                 (int)(Balance.MonsterHp(floor) * Balance.BossHpMult),
                 (int)(Balance.MonsterAtk(floor) * Balance.BossAtkMult),
                 Balance.MonsterDef(floor), 9);
-            return Fight(new List<Unit> { boss }, roll);
+            return Fight(new List<Unit> { boss }, roll, captured);
         }
 
-        private bool Fight(List<Unit> monsters, DiceResult roll)
+        private bool Fight(List<Unit> monsters, DiceResult roll, int captured)
         {
             if (_policy.UsePotion(_player.HpRatio, _potions))
             {
@@ -247,13 +297,25 @@ namespace DiceDungeon.Core.Run
                 _player.HealRatio(Balance.PotionHealRatio);
             }
 
-            // 보드-전투 연동: 더블 = 선제공격, 럭키세븐 = 크리 +15% (02-시스템설계 1.3)
-            var result = BattleSimulator.Fight(
-                _player, monsters, _rng.Derive(),
-                critBonus: roll.IsLuckySeven ? 0.15 : 0,
-                playerFirst: roll.IsDouble,
-                startShield: 0);
+            // 보드-전투 연동 (02-시스템설계 1.3):
+            // 더블 = 선제공격, 럭키세븐 = 크리 +15%, 점령 칸 수 = 시작 실드 (기사는 2배)
+            var options = new BattleOptions
+            {
+                CritBonus = roll.IsLuckySeven ? 0.15 : 0,
+                PlayerFirst = roll.IsDouble,
+                StartShield = captured * (_character.DoubleCaptureShield ? 4 : 2)
+                              + (int)(_player.MaxHp * _character.BarrierRatio), // 마법사: 마력 방벽
+                Skills = _skills,
+                ReviveAvailable = _reviveLeft,
+                Evasion = _character.Evasion, // 도적: 회피
+            };
+            var result = BattleSimulator.Fight(_player, monsters, _rng.Derive(), options);
 
+            if (result.ReviveUsed)
+            {
+                _reviveLeft = false;
+                _result.ReviveUsed = true;
+            }
             _result.MonstersKilled += result.MonstersKilled;
             return result.PlayerWon;
         }

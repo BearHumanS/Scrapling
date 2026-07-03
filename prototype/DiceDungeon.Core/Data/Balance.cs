@@ -21,10 +21,11 @@ namespace DiceDungeon.Core.Data
         public const double PlayerCritChance = 0.10;
         public const double CritMultiplier = 1.5;
 
-        // 몬스터 층별 스케일링 (v2: 지수 완화 — HP ×1.28/층, 공격 ×1.19/층)
-        public static int MonsterHp(int floor) => (int)Math.Round(30 * Math.Pow(1.28, floor - 1));
-        public static int MonsterAtk(int floor) => (int)Math.Round(5 * Math.Pow(1.19, floor - 1));
-        public static int MonsterDef(int floor) => (int)Math.Round(2 * Math.Pow(1.18, floor - 1));
+        // 몬스터 층별 스케일링
+        // (v3) 스킬 시스템 도입으로 플레이어 파워 급등 → 지수 재상향 (v2: 1.28/1.19)
+        public static int MonsterHp(int floor) => (int)Math.Round(32 * Math.Pow(1.34, floor - 1));
+        public static int MonsterAtk(int floor) => (int)Math.Round(5 * Math.Pow(1.23, floor - 1));
+        public static int MonsterDef(int floor) => (int)Math.Round(2 * Math.Pow(1.20, floor - 1));
 
         /// <summary>1~2층은 몬스터 1마리 고정 (튜토리얼 구간 보호).</summary>
         public const int SoloMonsterFloors = 2;
