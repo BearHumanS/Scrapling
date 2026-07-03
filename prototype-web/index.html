@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>다이스 던전 — 프로토타입</title>
+<title>다이스 던전 — 프로토타입 v4</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html,body { height:100%; }
@@ -26,47 +26,78 @@ button:disabled { opacity:.4; cursor:default; }
 .screen.active { display:flex; }
 
 /* ===== 마을 ===== */
-#screen-town { padding:28px 20px 20px; gap:14px; }
-.town-title { text-align:center; margin-top:8px; }
-.town-title h1 { font-size:30px; letter-spacing:2px; color:#ffd76a; text-shadow:0 3px 14px rgba(255,180,60,.35); }
-.town-title p { font-size:13px; color:#9a92b5; margin-top:6px; }
+#screen-town { padding:22px 16px 20px; gap:12px; max-height:100dvh; overflow-y:auto; }
+.town-title { text-align:center; margin-top:4px; }
+.town-title h1 { font-size:28px; letter-spacing:2px; color:#ffd76a; text-shadow:0 3px 14px rgba(255,180,60,.35); }
+.town-title p { font-size:12px; color:#9a92b5; margin-top:5px; }
 .panel {
   background:linear-gradient(180deg,#1e1930 0%,#181428 100%);
-  border:1px solid #322b4d; border-radius:14px; padding:14px 16px;
+  border:1px solid #322b4d; border-radius:14px; padding:12px 14px;
 }
-.soul-panel { display:flex; align-items:center; justify-content:center; gap:8px; font-size:20px; font-weight:700; }
+.soul-panel { display:flex; align-items:center; justify-content:center; gap:8px; font-size:19px; font-weight:700; }
 .soul-panel .num { color:#8fd0ff; }
-.stat-preview { font-size:14px; line-height:1.9; }
+.section-label { font-size:12px; color:#8f86ad; letter-spacing:1px; margin:2px 2px -6px; }
+.charGrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.char-card {
+  position:relative; border-radius:13px; padding:10px 8px 9px; text-align:center;
+  background:linear-gradient(180deg,#241e3c,#1b1730); border:1.5px solid #38305a;
+  transition:border-color .15s, box-shadow .15s;
+}
+.char-card .ci { font-size:32px; line-height:1.2; }
+.char-card .cn { font-size:14.5px; font-weight:800; margin-top:2px; }
+.char-card .cs { font-size:10.5px; color:#9a92b5; margin-top:3px; line-height:1.5; }
+.char-card .cp { font-size:10px; color:#b8aef5; margin-top:2px; }
+.char-card.sel { border-color:#ffd76a; box-shadow:0 0 14px rgba(255,215,106,.3); }
+.char-card.sel::after { content:'✔ 출전'; position:absolute; top:6px; right:8px; font-size:10px; color:#ffd76a; font-weight:800; }
+.char-card.locked { filter:grayscale(.7); opacity:.75; }
+.char-card:active { transform:scale(.97); }
+.unlock-tag { display:inline-block; margin-top:5px; font-size:11px; font-weight:800; color:#8fd0ff;
+  background:rgba(90,150,255,.12); border:1px solid rgba(90,150,255,.4); border-radius:8px; padding:2px 8px; }
+.stat-preview { font-size:13px; line-height:1.8; }
 .stat-preview .row { display:flex; justify-content:space-between; }
 .stat-preview .bonus { color:#7ee787; font-weight:700; }
-.section-label { font-size:12px; color:#8f86ad; letter-spacing:1px; margin:2px 2px -6px; }
-.train-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; }
+.train-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; }
 .train-row + .train-row { border-top:1px solid #2b2542; }
-.train-info { font-size:14px; line-height:1.5; }
+.train-info { font-size:13.5px; line-height:1.45; }
 .train-info small { color:#9a92b5; display:block; font-size:11px; }
 .train-btn {
-  min-width:104px; min-height:48px; border-radius:12px; font-size:13px; font-weight:700;
+  min-width:96px; min-height:44px; border-radius:12px; font-size:13px; font-weight:700;
   background:linear-gradient(180deg,#3d3260,#2c2547); border:1px solid #55488a; color:#e8e4f0;
 }
 .train-btn:not(:disabled):active { transform:scale(.96); }
+.relic-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; }
+.relic-row + .relic-row { border-top:1px solid #2b2542; }
+.relic-info { font-size:13px; line-height:1.4; }
+.relic-info small { color:#9a92b5; display:block; font-size:10.5px; }
+.relic-info .rlv { color:#ffd76a; font-weight:800; }
+.relic-btn {
+  min-width:88px; min-height:40px; border-radius:10px; font-size:12px; font-weight:700;
+  background:linear-gradient(180deg,#31527a,#24405f); border:1px solid #4a7cc0; color:#cfe6ff;
+}
+.relic-btn.maxed { background:#2a2542; border-color:#3c3260; color:#8f86ad; }
 #btnStartRun {
-  margin-top:auto; min-height:64px; border-radius:16px; font-size:20px; font-weight:800; letter-spacing:1px;
+  margin-top:6px; min-height:60px; border-radius:16px; font-size:19px; font-weight:800; letter-spacing:1px;
   background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703;
-  box-shadow:0 6px 18px rgba(240,184,67,.3), inset 0 1px 0 rgba(255,255,255,.4);
+  box-shadow:0 6px 18px rgba(240,184,67,.3), inset 0 1px 0 rgba(255,255,255,.4); flex-shrink:0;
 }
 #btnStartRun:active { transform:scale(.98); }
 .town-reset { text-align:center; font-size:11px; color:#585174; padding:4px; background:none; }
 
 /* ===== 런 화면 ===== */
-#screen-run { padding:10px 10px calc(12px + env(safe-area-inset-bottom)); gap:8px; }
+#screen-run { padding:10px 10px calc(12px + env(safe-area-inset-bottom)); gap:7px; }
 .hud {
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  background:#181428; border:1px solid #2d2747; border-radius:12px; padding:9px 12px;
-  font-size:14px; font-weight:700;
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  background:#181428; border:1px solid #2d2747; border-radius:12px; padding:8px 11px;
+  font-size:13px; font-weight:700;
 }
 .hud .floor { color:#ffd76a; }
+.hud .job { color:#b8aef5; font-size:12.5px; }
 .hud .gold { color:#f5cf6b; }
 .hud .soul { color:#8fd0ff; }
+.xpbar { position:relative; height:13px; border-radius:7px; overflow:hidden; background:#1c1830; border:1px solid #322b4d; }
+.xpfill { height:100%; width:0%; background:linear-gradient(90deg,#7a5cff,#b18aff); transition:width .3s ease; }
+.xpbar span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:9.5px; font-weight:800; color:#e8e4f0; text-shadow:0 1px 2px rgba(0,0,0,.8); }
 .hpwrap { display:flex; align-items:center; gap:8px; }
 .hpbar {
   position:relative; flex:1; height:24px; border-radius:12px; overflow:hidden;
@@ -81,7 +112,7 @@ button:disabled { opacity:.4; cursor:default; }
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
   font-size:12px; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.8);
 }
-.substats { font-size:12.5px; font-weight:700; color:#c9c2e2; white-space:nowrap; }
+.substats { font-size:11.5px; font-weight:700; color:#c9c2e2; white-space:nowrap; }
 
 #boardWrap { position:relative; }
 #board {
@@ -108,18 +139,19 @@ button:disabled { opacity:.4; cursor:default; }
 
 .board-center {
   grid-area:2 / 2 / 7 / 7; margin:5px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
   background:radial-gradient(80% 80% at 50% 30%, #1b1530 0%, #120e20 100%);
   border:1px solid #2c2547; border-radius:12px; text-align:center; padding:6px;
 }
 .bc-theme { font-size:11px; color:#8f86ad; letter-spacing:1px; }
-.bc-floor { font-size:26px; font-weight:800; color:#ffd76a; line-height:1; text-shadow:0 2px 10px rgba(255,180,60,.3); }
+.bc-floor { font-size:24px; font-weight:800; color:#ffd76a; line-height:1; text-shadow:0 2px 10px rgba(255,180,60,.3); }
+.bc-elem { font-size:10.5px; color:#9a92b5; }
 .dicewrap { display:flex; gap:10px; margin-top:2px; }
 .die {
-  width:46px; height:46px; border-radius:11px;
+  width:44px; height:44px; border-radius:11px;
   display:flex; align-items:center; justify-content:center;
   background:linear-gradient(180deg,#fdfbf4,#d9d3c5); color:#241f33;
-  font-size:25px; font-weight:800;
+  font-size:24px; font-weight:800;
   box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 -3px 0 rgba(0,0,0,.15);
   transition:transform .1s;
 }
@@ -131,7 +163,7 @@ button:disabled { opacity:.4; cursor:default; }
 }
 .die.landed { animation:diceLand .3s ease; }
 @keyframes diceLand { 0%{transform:scale(1.35);} 60%{transform:scale(.92);} 100%{transform:scale(1);} }
-.bc-badges { min-height:20px; display:flex; flex-direction:column; gap:3px; align-items:center; }
+.bc-badges { min-height:18px; display:flex; flex-direction:column; gap:3px; align-items:center; }
 .badge {
   font-size:11px; font-weight:800; padding:2px 9px; border-radius:9px;
   background:rgba(255,215,106,.14); color:#ffd76a; border:1px solid rgba(255,215,106,.45);
@@ -153,36 +185,43 @@ button:disabled { opacity:.4; cursor:default; }
 
 #logPanel {
   background:#12101d; border:1px solid #262040; border-radius:10px;
-  padding:7px 11px; min-height:64px; font-size:12.5px; line-height:1.55;
+  padding:7px 11px; min-height:60px; font-size:12px; line-height:1.55;
   display:flex; flex-direction:column; justify-content:flex-end;
 }
 #logPanel .l0 { opacity:.45; } #logPanel .l1 { opacity:.7; } #logPanel .l2 { opacity:1; }
 
-.bottomBar { display:flex; gap:8px; margin-top:auto; }
-#btnFieldPotion {
-  min-width:76px; min-height:58px; border-radius:14px; font-size:14px; font-weight:800;
+.bottomBar { display:flex; gap:7px; margin-top:auto; }
+#btnFieldPotion, #btnTree {
+  min-width:68px; min-height:56px; border-radius:14px; font-size:13px; font-weight:800;
   background:linear-gradient(180deg,#33414f,#25303b); border:1px solid #4a6076; color:#bfe3ff;
 }
+#btnTree { background:linear-gradient(180deg,#4a3a68,#372b4e); border-color:#7a5cff; color:#d8c8ff; position:relative; }
+#btnTree .pt-badge {
+  position:absolute; top:-6px; right:-5px; min-width:19px; height:19px; border-radius:10px;
+  background:#e05555; color:#fff; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; padding:0 4px;
+}
 #btnRoll {
-  flex:1; min-height:58px; border-radius:14px; font-size:19px; font-weight:800; letter-spacing:1px;
+  flex:1; min-height:56px; border-radius:14px; font-size:18px; font-weight:800; letter-spacing:1px;
   background:linear-gradient(180deg,#8358e8,#5c39b8); color:#fff;
   border:1px solid #9d7cf0;
   box-shadow:0 5px 16px rgba(131,88,232,.35), inset 0 1px 0 rgba(255,255,255,.3);
 }
-#btnRoll:not(:disabled):active, #btnFieldPotion:not(:disabled):active { transform:scale(.97); }
+#btnRoll:not(:disabled):active, #btnFieldPotion:not(:disabled):active, #btnTree:not(:disabled):active { transform:scale(.97); }
 
 /* ===== 오버레이 / 모달 ===== */
 #overlay {
   position:absolute; inset:0; z-index:50; display:none;
-  align-items:center; justify-content:center; padding:16px;
+  align-items:center; justify-content:center; padding:14px;
   background:rgba(5,4,10,.78); backdrop-filter:blur(2px);
 }
 #overlay.show { display:flex; }
 .modal {
-  width:100%; max-width:420px; border-radius:18px; padding:18px 16px;
+  width:100%; max-width:430px; border-radius:18px; padding:16px 15px;
   background:linear-gradient(180deg,#221c38 0%,#171226 100%);
   border:1px solid #3c3260; box-shadow:0 14px 42px rgba(0,0,0,.7);
   animation:modalPop .22s ease; text-align:center;
+  max-height:94dvh; overflow-y:auto;
 }
 @keyframes modalPop { from{transform:scale(.85) translateY(14px);opacity:0;} to{transform:scale(1) translateY(0);opacity:1;} }
 .modal.shaking { animation:shake .3s linear; }
@@ -194,14 +233,15 @@ button:disabled { opacity:.4; cursor:default; }
   80% { transform:translate(5px,2px); }
 }
 #boardWrap.shaking { animation:shake .3s linear; }
-.m-title { font-size:20px; font-weight:800; margin-bottom:4px; }
+.m-title { font-size:19px; font-weight:800; margin-bottom:4px; }
 .m-title.boss { color:#ff7a6a; text-shadow:0 0 14px rgba(255,90,70,.45); }
-.m-sub { font-size:12.5px; color:#9a92b5; margin-bottom:10px; }
-.m-badges { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; min-height:0; margin-bottom:8px; }
-.m-rows { text-align:left; font-size:14.5px; line-height:2.1; margin:8px 4px 12px; }
+.m-title.lv { color:#ffd76a; }
+.m-sub { font-size:12.5px; color:#9a92b5; margin-bottom:8px; }
+.m-badges { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; min-height:0; margin-bottom:6px; }
+.m-rows { text-align:left; font-size:14px; line-height:2.05; margin:8px 4px 10px; }
 .m-rows .row { display:flex; justify-content:space-between; border-bottom:1px dashed #2e2749; }
 .m-btn {
-  width:100%; min-height:54px; border-radius:13px; font-size:16px; font-weight:800; margin-top:8px;
+  width:100%; min-height:52px; border-radius:13px; font-size:15.5px; font-weight:800; margin-top:8px;
   background:linear-gradient(180deg,#8358e8,#5c39b8); color:#fff; border:1px solid #9d7cf0;
 }
 .m-btn.gold { background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703; border-color:#ffdf94; }
@@ -209,25 +249,96 @@ button:disabled { opacity:.4; cursor:default; }
 .m-btn.danger { background:linear-gradient(180deg,#d15050,#a12f2f); border-color:#ea8a8a; }
 .m-btn:not(:disabled):active { transform:scale(.98); }
 
+/* 레벨업 배분 */
+.alloc-pts { font-size:15px; font-weight:800; color:#ffd76a; margin:4px 0 8px; }
+.alloc-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.alloc-row {
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  background:#1c1830; border:1px solid #322b4d; border-radius:11px; padding:7px 8px 7px 11px;
+}
+.alloc-row .an { font-size:13px; font-weight:700; text-align:left; }
+.alloc-row .an small { display:block; font-size:9.5px; color:#8f86ad; font-weight:400; }
+.alloc-row .av { font-size:15px; font-weight:800; color:#e8e4f0; }
+.alloc-plus {
+  width:38px; height:38px; border-radius:10px; font-size:19px; font-weight:800;
+  background:linear-gradient(180deg,#8358e8,#5c39b8); color:#fff; border:1px solid #9d7cf0;
+}
+.alloc-plus:not(:disabled):active { transform:scale(.92); }
+
+/* 전직 카드 */
+.jobcards { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:8px 0 4px; }
+.jobcard {
+  border-radius:14px; padding:13px 9px; text-align:center;
+  background:linear-gradient(180deg,#2b2348,#1e1934); border:1.5px solid #4c3f80;
+  transition:transform .1s;
+}
+.jobcard:active { transform:scale(.96); }
+.jobcard .ji { font-size:36px; }
+.jobcard .jn { font-size:15px; font-weight:800; color:#ffd76a; margin-top:4px; }
+.jobcard .jb { font-size:10.5px; color:#8fd0ff; margin-top:5px; font-weight:700; }
+.jobcard .jd { font-size:10.5px; color:#9a92b5; margin-top:5px; line-height:1.55; }
+
+/* 스킬트리 */
+.tree-pts { font-size:14px; font-weight:800; color:#8fd0ff; margin-bottom:6px; }
+.tree-sec { font-size:11px; color:#8f86ad; letter-spacing:1px; text-align:left; margin:8px 2px 3px; }
+.sk-row {
+  display:flex; align-items:center; gap:8px; padding:7px 2px;
+  border-bottom:1px dashed #2e2749; text-align:left;
+}
+.sk-row.locked { opacity:.5; }
+.sk-icon { font-size:22px; width:30px; text-align:center; flex-shrink:0; }
+.sk-body { flex:1; min-width:0; }
+.sk-name { font-size:13.5px; font-weight:800; }
+.sk-name .sk-lv { color:#ffd76a; font-size:12px; }
+.sk-name .sk-eq { color:#7ee787; font-size:10.5px; font-weight:800; }
+.sk-desc { font-size:10.5px; color:#9a92b5; line-height:1.45; margin-top:1px; }
+.sk-lock { font-size:10px; color:#e08a8a; margin-top:1px; font-weight:700; }
+.sk-btn {
+  min-width:58px; min-height:40px; border-radius:10px; font-size:12.5px; font-weight:800; flex-shrink:0;
+  background:linear-gradient(180deg,#2e7a4f,#1e5236); border:1px solid #6cc094; color:#d2f5df;
+}
+
 /* 전투 */
-.enemyRow { display:flex; gap:10px; justify-content:center; margin:8px 0 4px; }
+.enemyRow { display:flex; gap:8px; justify-content:center; margin:6px 0 4px; }
 .enemy { flex:1; max-width:150px; transition:opacity .4s, filter .4s; }
 .enemy.dead { opacity:.22; filter:grayscale(1); }
-.e-sprite { font-size:52px; line-height:1.15; transition:transform .12s, filter .12s; display:inline-block; }
-.e-sprite.boss { font-size:68px; }
+.e-sprite { font-size:48px; line-height:1.15; transition:transform .12s, filter .12s; display:inline-block; }
+.e-sprite.boss { font-size:64px; }
 .hitflash .e-sprite { filter:brightness(2.6) saturate(.3); transform:scale(1.12) rotate(-6deg); }
-.e-name { font-size:12px; color:#c9c2e2; font-weight:700; margin-top:2px; }
+.e-name { font-size:11.5px; color:#c9c2e2; font-weight:700; margin-top:2px; }
 .ehp { height:9px; border-radius:5px; background:#241f33; border:1px solid #443b60; overflow:hidden; margin-top:4px; }
 .ehpfill { height:100%; background:linear-gradient(90deg,#e05555,#f08a6a); transition:width .3s ease; }
-.ehptext { font-size:10.5px; color:#9a92b5; margin-top:2px; }
-#btMsg { min-height:22px; font-size:13.5px; font-weight:700; color:#ffd76a; margin:6px 0; }
-.pl-row { display:flex; align-items:center; gap:10px; margin:4px 2px 10px; }
-.pl-sprite { font-size:40px; transition:transform .12s, filter .12s; }
+.ehptext { font-size:10px; color:#9a92b5; margin-top:2px; }
+.chips { min-height:16px; display:flex; gap:3px; justify-content:center; flex-wrap:wrap; margin-top:2px; }
+.chip {
+  font-size:9.5px; font-weight:800; border-radius:8px; padding:1px 5px;
+  background:rgba(255,120,80,.15); border:1px solid rgba(255,120,80,.4); color:#ffb59d;
+}
+.chip.poison { background:rgba(120,220,90,.12); border-color:rgba(120,220,90,.4); color:#a8e88f; }
+.chip.freeze { background:rgba(120,190,255,.12); border-color:rgba(120,190,255,.4); color:#a8d8ff; }
+.chip.stun   { background:rgba(255,220,90,.12); border-color:rgba(255,220,90,.45); color:#ffe9a0; }
+#btMsg { min-height:20px; font-size:13px; font-weight:700; color:#ffd76a; margin:5px 0; }
+.pl-row { display:flex; align-items:center; gap:10px; margin:4px 2px 8px; }
+.pl-sprite { font-size:38px; transition:transform .12s, filter .12s; }
 .pl-row.hitflash .pl-sprite { filter:brightness(2.4); transform:scale(1.08) rotate(5deg); }
 .pl-hp { flex:1; }
-.actions { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.pl-shield { font-size:11px; font-weight:800; color:#8fd0ff; min-width:44px; text-align:right; }
+.skillbar { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; margin-bottom:7px; }
+.sk-act {
+  position:relative; min-height:52px; border-radius:12px; font-size:12.5px; font-weight:800; line-height:1.25;
+  border:1px solid #7a5cff; background:linear-gradient(180deg,#463672,#332853); overflow:hidden;
+}
+.sk-act small { display:block; font-size:9px; font-weight:600; opacity:.8; }
+.sk-act .cd-mask {
+  position:absolute; inset:0; background:rgba(8,6,16,.72);
+  display:flex; align-items:center; justify-content:center;
+  font-size:17px; font-weight:800; color:#b8aef5;
+}
+.sk-act:not(:disabled):active { transform:scale(.96); }
+.sk-act.empty { background:#1c1830; border-color:#2b2542; color:#585174; }
+.actions { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
 .act-btn {
-  min-height:56px; border-radius:13px; font-size:15px; font-weight:800; line-height:1.3;
+  min-height:52px; border-radius:13px; font-size:14px; font-weight:800; line-height:1.3;
   border:1px solid #55488a; background:linear-gradient(180deg,#3d3260,#2c2547);
 }
 .act-btn.atk { background:linear-gradient(180deg,#c04848,#8e2c2c); border-color:#e88a8a; }
@@ -241,7 +352,7 @@ button:disabled { opacity:.4; cursor:default; }
 .shop-item .info { text-align:left; font-size:14px; font-weight:700; }
 .shop-item .info small { display:block; font-size:11px; color:#9a92b5; font-weight:400; }
 .buy-btn {
-  min-width:96px; min-height:48px; border-radius:11px; font-weight:800; font-size:13.5px;
+  min-width:96px; min-height:46px; border-radius:11px; font-weight:800; font-size:13.5px;
   background:linear-gradient(180deg,#f0b843,#c88a1e); color:#241703;
 }
 
@@ -256,6 +367,10 @@ button:disabled { opacity:.4; cursor:default; }
 .float.heal { color:#7ee787; }
 .float.gold { color:#ffd76a; }
 .float.info { color:#b8aef5; font-size:14px; }
+.float.miss { color:#c9c2e2; font-size:15px; }
+.float.xp   { color:#b18aff; font-size:14px; }
+.float.eff  { color:#ff9a3a; font-size:13px; }
+.float.res  { color:#8fa2c9; font-size:13px; }
 @keyframes floatUp {
   0%   { opacity:0; margin-top:6px; }
   12%  { opacity:1; margin-top:0; }
@@ -270,12 +385,16 @@ button:disabled { opacity:.4; cursor:default; }
   <div id="screen-town" class="screen">
     <div class="town-title">
       <h1>🎲 다이스 던전</h1>
-      <p>보드 × 로그라이트 던전 RPG — 플레이어블 프로토타입</p>
+      <p>보드 × 로그라이트 던전 RPG — 심화 시스템 프로토타입 v4</p>
     </div>
     <div class="panel soul-panel">💠 소울스톤 <span class="num" id="townSoul">0</span></div>
-    <div class="section-label">🏰 마을 — 훈련소 (영구 성장)</div>
+    <div class="section-label">🧝 캐릭터 선택 (해금 💠300)</div>
+    <div class="charGrid" id="charGrid"></div>
+    <div class="section-label">🏋️ 훈련소 (영구 성장)</div>
     <div class="panel" id="trainPanel"></div>
-    <div class="section-label">🧝 출전 스탯</div>
+    <div class="section-label">🏺 유물 상점 (12종 × 5레벨)</div>
+    <div class="panel" id="relicPanel"></div>
+    <div class="section-label">📜 출전 정보</div>
     <div class="panel stat-preview" id="statPreview"></div>
     <button id="btnStartRun" onclick="startRun()">⚔️ 던전 입장</button>
     <button class="town-reset" onclick="resetMeta()">메타 성장 초기화 (개발용)</button>
@@ -285,19 +404,22 @@ button:disabled { opacity:.4; cursor:default; }
   <div id="screen-run" class="screen">
     <div class="hud">
       <div class="floor">🏰 <span id="hudFloor">1</span>층</div>
+      <div class="job" id="hudJob">기사 Lv.1</div>
       <div class="gold">💰 <span id="hudGold">0</span></div>
       <div class="soul">💠 <span id="hudSoul">0</span></div>
     </div>
+    <div class="xpbar"><div class="xpfill" id="xpFill"></div><span id="xpText"></span></div>
     <div class="hpwrap">
       <div class="hpbar"><div class="hpfill" id="hpFill"></div><span id="hpText">100 / 100</span></div>
-      <div class="substats" id="subStats">⚔️12 🛡️5</div>
+      <div class="substats" id="subStats"></div>
     </div>
     <div id="boardWrap">
       <div id="board"></div>
     </div>
     <div id="logPanel"></div>
     <div class="bottomBar">
-      <button id="btnFieldPotion" onclick="useFieldPotion()">🧪 ×2<br><small style="font-size:10px;font-weight:600">HP 40%</small></button>
+      <button id="btnFieldPotion" onclick="useFieldPotion()">🧪 ×2</button>
+      <button id="btnTree" onclick="openTreeFromBar()">📖<br><small style="font-size:9px">스킬</small><span class="pt-badge" id="treeBadge" style="display:none">0</span></button>
       <button id="btnRoll" onclick="rollDice()">🎲 주사위 굴리기</button>
     </div>
   </div>
@@ -310,25 +432,29 @@ button:disabled { opacity:.4; cursor:default; }
 'use strict';
 
 /* =====================================================================
- * 밸런스 상수 — prototype/DiceDungeon.Core/Data/Balance.cs (v2) 그대로 이식
+ * PART A — 데이터 (C# Core 1:1 이식)
+ * Balance.cs(v3) / StatBlock.cs / Jobs.cs / SkillDef.cs / Elements.cs
+ * StatusEffects.cs / Relics.cs / PlayerProfile.cs / CharacterClass.cs
  * ===================================================================== */
+
+/* ----- Balance.cs (v3) ----- */
 const B = {
   BOARD_SIZE: 24,
   FINAL_FLOOR: 15,
+  CRIT_MULT: 1.5,
 
-  PLAYER_HP: 100, PLAYER_ATK: 12, PLAYER_DEF: 5, PLAYER_SPD: 10,
-  PLAYER_CRIT: 0.10, CRIT_MULT: 1.5,
-
-  monsterHp:  f => Math.round(30 * Math.pow(1.28, f - 1)),
-  monsterAtk: f => Math.round(5  * Math.pow(1.19, f - 1)),
-  monsterDef: f => Math.round(2  * Math.pow(1.18, f - 1)),
+  monsterHp:  f => Math.round(32 * Math.pow(1.34, f - 1)),
+  monsterAtk: f => Math.round(5  * Math.pow(1.23, f - 1)),
+  monsterDef: f => Math.round(2  * Math.pow(1.20, f - 1)),
   SOLO_MONSTER_FLOORS: 2,
 
   BOSS_HP_MULT: 2.5, BOSS_ATK_MULT: 1.2,
   ELITE_HP_MULT: 1.8, ELITE_ATK_MULT: 1.3,
-  MONSTER_CRIT: 0.05,
 
   FLOOR_CLEAR_HEAL: 0.35,
+
+  monsterXp: f => 5 + f * 3,
+  BOSS_XP_MULT: 5,
 
   TILE_BATTLE: 0.50, TILE_ELITE: 0.08, TILE_TREASURE: 0.15,
   TILE_EVENT: 0.12, TILE_TRAP: 0.10,
@@ -350,11 +476,43 @@ const B = {
   START_POTIONS: 2,
 
   soulstonesForRun: (floors, kills) => floors * 10 + kills,
-  DEATH_PENALTY: 0.7
+  DEATH_PENALTY: 0.7,
+
+  JOB_CHANGE_LEVEL: 8,   // JobCatalog.JobChangeLevel
+  SKILL_SLOTS: 3         // JobCatalog.SkillSlots
 };
 
 /* 연출 타이밍 */
 const T = { DICE: 500, DICE_TICK: 60, STEP: 150, LAND: 260, HIT: 180, MOB_GAP: 560, WIN_CLOSE: 850 };
+
+/* ----- Elements.cs: 6속성 상성표 ----- */
+const ELEMS = ['neutral','fire','ice','earth','holy','shadow'];
+const ELEM_INFO = {
+  neutral:{ icon:'⚪', n:'무속성' },
+  fire:   { icon:'🔥', n:'화염' },
+  ice:    { icon:'❄️', n:'냉기' },
+  earth:  { icon:'🪨', n:'대지' },
+  holy:   { icon:'✨', n:'신성' },
+  shadow: { icon:'🌑', n:'암흑' }
+};
+/* [공격][방어] — 삼각(화염>대지>냉기>화염), 동속성 0.5, 신성↔암흑 2.0 */
+const ELEM_MATRIX = {
+  neutral:{ neutral:1.0, fire:1.0,  ice:1.0,  earth:1.0,  holy:1.0, shadow:1.0 },
+  fire:   { neutral:1.0, fire:0.5,  ice:0.75, earth:1.5,  holy:1.0, shadow:1.0 },
+  ice:    { neutral:1.0, fire:1.5,  ice:0.5,  earth:0.75, holy:1.0, shadow:1.0 },
+  earth:  { neutral:1.0, fire:0.75, ice:1.5,  earth:0.5,  holy:1.0, shadow:1.0 },
+  holy:   { neutral:1.0, fire:1.0,  ice:1.0,  earth:1.0,  holy:0.5, shadow:2.0 },
+  shadow: { neutral:1.0, fire:1.0,  ice:1.0,  earth:1.0,  holy:2.0, shadow:0.5 }
+};
+const elemMult = (atk, def) => ELEM_MATRIX[atk][def];
+/* 몬스터 방어 속성 = 층 테마 */
+function floorElement(f) {
+  if (f <= 3) return 'shadow';
+  if (f <= 6) return 'earth';
+  if (f <= 9) return 'fire';
+  if (f <= 12) return 'ice';
+  return 'shadow';
+}
 
 /* 층 테마 (01-게임기획서 5) */
 const THEMES = [
@@ -377,48 +535,470 @@ const TILE_DEFS = {
   event:    { e:'❓', n:'이벤트' }
 };
 
-/* =====================================================================
- * 메타 성장 (마을 훈련소) — localStorage
- * ===================================================================== */
-const SAVE_KEY = 'diceDungeonMeta_v1';
+/* ----- StatBlock.cs: 6스탯 파생 공식 ----- */
+const STAT_IDS = ['str','agi','vit','int','dex','luk'];
+const STAT_INFO = {
+  str:{ n:'STR', icon:'💪', d:'물리 공격 +1' },
+  agi:{ n:'AGI', icon:'🏃', d:'속도 +0.5, 회피 +0.3%' },
+  vit:{ n:'VIT', icon:'❤️', d:'HP +8, 방어 +0.3' },
+  int:{ n:'INT', icon:'🔮', d:'마법 공격 +1, 마방 +0.5' },
+  dex:{ n:'DEX', icon:'🎯', d:'명중 +0.8%' },
+  luk:{ n:'LUK', icon:'🍀', d:'크리 +0.4%' }
+};
+const D = {
+  maxHp:    s => 70 + s.vit * 8,
+  atk:      s => 8 + s.str,
+  matk:     s => 8 + s.int,
+  def:      s => 2 + Math.trunc(s.vit * 0.3),
+  mdef:     s => Math.trunc(s.int * 0.5),
+  spd:      s => 8 + Math.trunc(s.agi * 0.5),
+  crit:     s => 0.05 + s.luk * 0.004,
+  evasion:  s => s.agi * 0.003,
+  accuracy: s => 0.90 + s.dex * 0.008
+};
+
+/* ----- StatusEffects.cs: 화상 4/중첩(2턴)·중독 3/중첩(3턴)·빙결(2턴)·기절(1회) ----- */
+const STATUS_INFO = {
+  burn:   { icon:'🔥', n:'화상', cls:'' },
+  poison: { icon:'☠', n:'중독', cls:'poison' },
+  freeze: { icon:'❄', n:'빙결', cls:'freeze' },
+  stun:   { icon:'💫', n:'기절', cls:'stun' }
+};
+const STATUS_DUR = { burn:2, poison:3, freeze:2, stun:1 };
+
+function applyStatus(unit, type, stacks) {
+  if (!unit.st[type]) unit.st[type] = { dur:0, stacks:0 };
+  unit.st[type].dur = STATUS_DUR[type];       // 지속시간 리셋
+  unit.st[type].stacks += (stacks || 1);      // 중첩 누적
+}
+/* 턴 시작 처리 → { damage, skip } (고정 도트: 화상 4×중첩, 중독 3×중첩) */
+function tickStatuses(unit) {
+  let damage = 0, skip = false;
+  if (unit.st.burn)   damage += 4 * unit.st.burn.stacks;
+  if (unit.st.poison) damage += 3 * unit.st.poison.stacks;
+  if (unit.st.stun) { skip = true; delete unit.st.stun; }
+  for (const k of Object.keys(unit.st)) {
+    unit.st[k].dur--;
+    if (unit.st[k].dur <= 0) delete unit.st[k];
+  }
+  return { damage, skip };
+}
+
+/* ----- SkillDef.cs: 스킬 정의 (레벨 1~5, 계수/레벨 증가, 패시브 8종) ----- */
+function SK(id, name, maxLv, o) {
+  return Object.assign({
+    id, name, maxLv,
+    cooldown:0, magic:false, element:'neutral',
+    coef:0, coefPerLv:0, aoe:false,
+    applies:null, stacksPerLv:0,
+    healBase:0, healPerLv:0, shieldRatio:0,
+    passive:null, passiveValue:0,
+    prereqId:'', prereqLv:0
+  }, o || {});
+}
+const isPassive = def => def.passive != null;
+
+/* ----- Jobs.cs: 1차 4직업 트리 (액티브 3 + 패시브 2) ----- */
+const BASE_TREES = {
+  knight: [
+    SK('kn_bash',  '방패치기', 5, { cooldown:3, coef:1.0, coefPerLv:0.12, applies:'stun', stacksPerLv:1 }),
+    SK('kn_blow',  '강타',     5, { cooldown:4, coef:1.4, coefPerLv:0.18 }),
+    SK('kn_sanct', '성역',     5, { cooldown:5, healBase:0.12, healPerLv:0.03 }),
+    SK('kn_wall',  '철벽',     3, { passive:'defFlat', passiveValue:2 }),
+    SK('kn_charge','돌진',     3, { cooldown:3, coef:1.1, coefPerLv:0.10 })
+  ],
+  rogue: [
+    SK('rg_ambush','급습',     5, { cooldown:3, coef:1.45, coefPerLv:0.18 }),
+    SK('rg_poison','독칼',     5, { cooldown:2, coef:0.8,  coefPerLv:0.10, applies:'poison', stacksPerLv:3 }),
+    SK('rg_flurry','연속베기', 5, { cooldown:4, coef:1.7,  coefPerLv:0.25 }),
+    SK('rg_sharp', '칼갈기',   3, { passive:'critPct',  passiveValue:0.03 }),
+    SK('rg_step',  '경공',     3, { passive:'evadePct', passiveValue:0.03 })
+  ],
+  mage: [
+    SK('mg_fire', '화염구',    5, { cooldown:3, magic:true, element:'fire', coef:1.0, coefPerLv:0.12, aoe:true, applies:'burn', stacksPerLv:1 }),
+    SK('mg_ice',  '빙결탄',    5, { cooldown:2, magic:true, element:'ice',  coef:0.9, coefPerLv:0.11, applies:'freeze', stacksPerLv:1 }),
+    SK('mg_blast','마력 폭발', 5, { cooldown:5, magic:true, coef:2.0, coefPerLv:0.25 }),
+    SK('mg_medit','명상',      3, { passive:'matkFlat', passiveValue:3 }),
+    SK('mg_focus','집중',      3, { passive:'critPct',  passiveValue:0.02 })
+  ],
+  cleric: [
+    SK('cl_smite','신성타격',  5, { cooldown:2, magic:true, element:'holy', coef:1.1, coefPerLv:0.12 }),
+    SK('cl_bless','축복',      5, { cooldown:4, healBase:0.18, healPerLv:0.04 }),
+    SK('cl_judge','심판',      5, { cooldown:5, magic:true, element:'holy', coef:1.6, coefPerLv:0.20 }),
+    SK('cl_faith','신앙',      3, { passive:'matkFlat', passiveValue:2 }),
+    SK('cl_guard','가호',      3, { passive:'defFlat',  passiveValue:1.5 })
+  ]
+};
+
+/* ----- Jobs.cs: 2차 8직업 (전직 보너스 +10, 트리 3종, 선행 조건) ----- */
+const PATHS = {
+  runeknight: {
+    id:'runeknight', name:'룬 나이트', icon:'🗡️', parent:'knight',
+    bonus:{ str:6, agi:0, vit:2, int:0, dex:0, luk:2 },
+    bias:['str','str','vit','luk'],
+    desc:'화염 검술과 발화 — 밸런스 공격형',
+    tree:[
+      SK('rk_flame', '플레임 슬래시', 5, { cooldown:3, element:'fire', coef:1.6, coefPerLv:0.22, prereqId:'kn_blow', prereqLv:3 }),
+      SK('rk_ignite','발화',          3, { passive:'burnOnHitPct', passiveValue:0.10, prereqId:'rk_flame', prereqLv:1 }),
+      SK('rk_rage',  '전장의 함성',   3, { passive:'atkFlat', passiveValue:3 })
+    ]
+  },
+  guardian: {
+    id:'guardian', name:'가디언', icon:'🛡️', parent:'knight',
+    bonus:{ str:2, agi:0, vit:6, int:0, dex:0, luk:2 },
+    bias:['vit','vit','str','dex'],
+    desc:'실드와 요새화 — 최강의 탱킹',
+    tree:[
+      SK('gd_oath', '수호의 맹세',  5, { cooldown:4, element:'holy', shieldRatio:0.12, prereqId:'kn_wall', prereqLv:2 }),
+      SK('gd_fort', '요새화',       1, { passive:'captureShieldTriple', passiveValue:1, prereqId:'gd_oath', prereqLv:1 }),
+      SK('gd_smite','응징의 방패',  5, { cooldown:3, coef:1.3, coefPerLv:0.15, applies:'stun', stacksPerLv:1 })
+    ]
+  },
+  assassin: {
+    id:'assassin', name:'어쌔신', icon:'🔪', parent:'rogue',
+    bonus:{ str:4, agi:3, vit:0, int:0, dex:0, luk:3 },
+    bias:['luk','str','agi','agi'],
+    desc:'맹독과 백스탭 — 짧고 굵은 폭딜',
+    tree:[
+      SK('as_venom', '맹독 인장', 5, { cooldown:3, coef:1.0, coefPerLv:0.10, applies:'poison', stacksPerLv:3, prereqId:'rg_poison', prereqLv:3 }),
+      SK('as_back',  '백스탭',    5, { cooldown:4, coef:2.3, coefPerLv:0.28, prereqId:'rg_ambush', prereqLv:2 }),
+      SK('as_lethal','치명',      3, { passive:'critPct', passiveValue:0.04 })
+    ]
+  },
+  shadowdancer: {
+    id:'shadowdancer', name:'섀도 댄서', icon:'🌒', parent:'rogue',
+    bonus:{ str:0, agi:6, vit:2, int:0, dex:0, luk:2 },
+    bias:['agi','agi','luk','str'],
+    desc:'회피와 그림자 — 유령같은 생존',
+    tree:[
+      SK('sd_bolt', '그림자 칼날', 5, { cooldown:3, element:'shadow', coef:1.4, coefPerLv:0.18, prereqId:'rg_flurry', prereqLv:2 }),
+      SK('sd_veil', '장막',        3, { passive:'evadePct', passiveValue:0.05 }),
+      SK('sd_dance','환영무',      5, { cooldown:5, coef:1.2, coefPerLv:0.15, aoe:true })
+    ]
+  },
+  archmage: {
+    id:'archmage', name:'아크메이지', icon:'☄️', parent:'mage',
+    bonus:{ str:0, agi:0, vit:2, int:6, dex:2, luk:0 },
+    bias:['int','int','dex','vit'],
+    desc:'메테오 광역 섬멸 — 극한의 마력',
+    tree:[
+      SK('am_meteor','메테오',     5, { cooldown:5, magic:true, element:'fire', coef:2.0, coefPerLv:0.25, aoe:true, applies:'burn', stacksPerLv:2, prereqId:'mg_fire', prereqLv:3 }),
+      SK('am_surge', '마력 격류',  3, { passive:'matkFlat', passiveValue:4 }),
+      SK('am_quake', '대지 붕괴',  5, { cooldown:4, magic:true, element:'earth', coef:1.7, coefPerLv:0.20 })
+    ]
+  },
+  frostweaver: {
+    id:'frostweaver', name:'서리술사', icon:'🧊', parent:'mage',
+    bonus:{ str:0, agi:2, vit:4, int:4, dex:0, luk:0 },
+    bias:['int','vit','int','agi'],
+    desc:'빙결 제어와 얼음 갑주 — 지구전',
+    tree:[
+      SK('fw_nova', '프로스트 노바', 5, { cooldown:4, magic:true, element:'ice', coef:1.5, coefPerLv:0.18, aoe:true, applies:'freeze', stacksPerLv:1, prereqId:'mg_ice', prereqLv:3 }),
+      SK('fw_armor','얼음 갑주',     5, { cooldown:5, shieldRatio:0.15 }),
+      SK('fw_deep', '심빙',          3, { passive:'matkFlat', passiveValue:3 })
+    ]
+  },
+  inquisitor: {
+    id:'inquisitor', name:'인퀴지터', icon:'⚖️', parent:'cleric',
+    bonus:{ str:3, agi:0, vit:0, int:4, dex:0, luk:3 },
+    bias:['int','luk','int','str'],
+    desc:'천벌과 정화의 불꽃 — 공격 신관',
+    tree:[
+      SK('iq_wrath','천벌',         5, { cooldown:4, magic:true, element:'holy', coef:2.0, coefPerLv:0.25, prereqId:'cl_judge', prereqLv:3 }),
+      SK('iq_zeal', '광신',         3, { passive:'critPct', passiveValue:0.03 }),
+      SK('iq_purge','정화의 불꽃',  5, { cooldown:3, magic:true, element:'fire', coef:1.3, coefPerLv:0.15, aoe:true })
+    ]
+  },
+  highpriest: {
+    id:'highpriest', name:'하이프리스트', icon:'📿', parent:'cleric',
+    bonus:{ str:0, agi:0, vit:4, int:4, dex:0, luk:2 },
+    bias:['int','vit','int','vit'],
+    desc:'대치유와 소생 — 생존 특화',
+    tree:[
+      SK('hp_heal', '대치유',     5, { cooldown:4, healBase:0.20, healPerLv:0.04, prereqId:'cl_bless', prereqLv:3 }),
+      SK('hp_resur','소생의 빛',  1, { passive:'reviveBoost', passiveValue:1 }),
+      SK('hp_ray',  '성광',       5, { cooldown:3, magic:true, element:'holy', coef:1.4, coefPerLv:0.16 })
+    ]
+  }
+};
+const pathsFor = charId => Object.values(PATHS).filter(p => p.parent === charId);
+
+/* ----- CharacterClass.cs 패시브 + JobCatalog.BaseStats/BaseBias ----- */
+const CHARS = {
+  knight: {
+    id:'knight', name:'기사', icon:'🤺',
+    base:{ str:9, agi:3, vit:9, int:2, dex:4, luk:3 }, bias:['str','vit','str'],
+    evasion:0, passiveDesc:'점령 칸 실드 2배',
+    captureShield2:true, reroll:false, bestEvent:false, restHeal2:false, revive:false, barrier:0
+  },
+  rogue: {
+    id:'rogue', name:'도적', icon:'🥷',
+    base:{ str:9, agi:8, vit:4, int:2, dex:2, luk:5 }, bias:['str','agi','luk'],
+    evasion:0.25, passiveDesc:'회피 +25%, 층당 리롤 1회',
+    captureShield2:false, reroll:true, bestEvent:false, restHeal2:false, revive:false, barrier:0
+  },
+  mage: {
+    id:'mage', name:'마법사', icon:'🧙',
+    base:{ str:2, agi:4, vit:4, int:9, dex:6, luk:5 }, bias:['int','vit','dex'],
+    evasion:0, passiveDesc:'마력 방벽 25%, 이벤트 리롤',
+    captureShield2:false, reroll:false, bestEvent:true, restHeal2:false, revive:false, barrier:0.25
+  },
+  cleric: {
+    id:'cleric', name:'성직자', icon:'🧝',
+    base:{ str:4, agi:3, vit:7, int:8, dex:4, luk:4 }, bias:['int','vit','str'],
+    evasion:0, passiveDesc:'쉼터 회복 2배, 부활 1회',
+    captureShield2:false, reroll:false, bestEvent:false, restHeal2:true, revive:true, barrier:0
+  }
+};
+const CHAR_ORDER = ['knight','rogue','mage','cleric'];
+
+/* ----- Relics.cs: 유물 12종 (60 × 1.75^Lv, 최대 5) ----- */
+const RELIC_MAX = 5;
+const relicCost = lv => Math.round(60 * Math.pow(1.75, lv));
+const RELICS = [
+  { key:'startGold',   icon:'👛', name:'여행자의 지갑',   per:'시작 골드 +30' },
+  { key:'startPotion', icon:'🎒', name:'연금술 가방',     per:'시작 포션 +1 (최대 3)' },
+  { key:'restHeal',    icon:'🛏️', name:'따뜻한 담요',     per:'쉼터 회복 +5%p' },
+  { key:'captureHeal', icon:'🚩', name:'정착민의 깃발',   per:'점령 칸 회복 +3%p' },
+  { key:'trapSense',   icon:'🐈', name:'고양이의 감각',   per:'함정 회피 +8%p' },
+  { key:'atkCore',     icon:'💢', name:'힘의 결정',       per:'공격 +2' },
+  { key:'defCore',     icon:'🔰', name:'수호의 결정',     per:'방어 +1' },
+  { key:'vitalCore',   icon:'💗', name:'생명의 결정',     per:'최대 HP +15' },
+  { key:'luckyCharm',  icon:'🍀', name:'네잎클로버',      per:'크리 확률 +2%p' },
+  { key:'bargain',     icon:'🪙', name:'상인의 인장',     per:'상점 가격 -5%' },
+  { key:'soulHarvest', icon:'🌾', name:'영혼 수확기',     per:'소울스톤 +8%' },
+  { key:'bossTrophy',  icon:'👑', name:'왕관 수집가',     per:'완주 보너스 골드 +25%' }
+];
+/* RelicModifiers.From 이식 */
+function relicMods(levels) {
+  const m = { startGold:0, startPotions:0, restHealBonus:0, captureHealBonus:0,
+              trapAvoidBonus:0, bonusAtk:0, bonusDef:0, bonusHp:0, bonusCrit:0,
+              shopDiscount:0, soulMult:1.0, lapGoldMult:1.0 };
+  for (let i = 0; i < RELICS.length; i++) {
+    const lv = (levels && levels[i]) | 0;
+    if (lv <= 0) continue;
+    switch (RELICS[i].key) {
+      case 'startGold':   m.startGold += 30 * lv; break;
+      case 'startPotion': m.startPotions += Math.min(lv, 3); break;
+      case 'restHeal':    m.restHealBonus += 0.05 * lv; break;
+      case 'captureHeal': m.captureHealBonus += 0.03 * lv; break;
+      case 'trapSense':   m.trapAvoidBonus += 0.08 * lv; break;
+      case 'atkCore':     m.bonusAtk += 2 * lv; break;
+      case 'defCore':     m.bonusDef += 1 * lv; break;
+      case 'vitalCore':   m.bonusHp += 15 * lv; break;
+      case 'luckyCharm':  m.bonusCrit += 0.02 * lv; break;
+      case 'bargain':     m.shopDiscount += 0.05 * lv; break;
+      case 'soulHarvest': m.soulMult += 0.08 * lv; break;
+      case 'bossTrophy':  m.lapGoldMult += 0.25 * lv; break;
+    }
+  }
+  return m;
+}
+
+/* ----- PlayerProfile.cs: 훈련소 3종 (60 × 1.6^Lv) + 해금 300 ----- */
 const TRAIN = {
   hp:  { icon:'❤️', label:'체력 단련', gain:25, unit:'HP' },
   atk: { icon:'⚔️', label:'공격 훈련', gain:3,  unit:'공격' },
   def: { icon:'🛡️', label:'방어 훈련', gain:2,  unit:'방어' }
 };
-const trainCost = lv => Math.floor(50 * Math.pow(1.5, lv));
-
-let meta = { soul: 0, hp: 0, atk: 0, def: 0 };
-function loadMeta() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) {
-      const m = JSON.parse(raw);
-      meta = {
-        soul: m.soul | 0,
-        hp: m.hp | 0, atk: m.atk | 0, def: m.def | 0
-      };
-    }
-  } catch (e) { /* 저장 손상 시 초기값 */ }
-}
-function saveMeta() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch (e) { /* private mode */ }
-}
-function resetMeta() {
-  if (!confirm('메타 성장(소울스톤·훈련 단계)을 모두 초기화할까요?')) return;
-  meta = { soul: 0, hp: 0, atk: 0, def: 0 };
-  saveMeta();
-  renderTown();
-}
-const bonusHp  = () => meta.hp  * TRAIN.hp.gain;
-const bonusAtk = () => meta.atk * TRAIN.atk.gain;
-const bonusDef = () => meta.def * TRAIN.def.gain;
+const trainCost = lv => Math.round(60 * Math.pow(1.6, lv));
+const UNLOCK_COST = 300;
 
 /* =====================================================================
- * 공용 헬퍼
+ * PART B — CharacterSheet.cs / SkillBook / DamageCalc.cs 이식 + 공용 헬퍼
+ * ===================================================================== */
+
+/* ----- CharacterSheet.cs ----- */
+const xpToLevel = lv => Math.trunc(14 * Math.pow(lv, 1.25));
+
+function newSheet(charId) {
+  return {
+    job: charId, advanced: null,          // advanced: PATHS 키
+    level: 1, xp: 0,
+    stats: Object.assign({}, CHARS[charId].base),
+    learned: {},                          // skillId -> level
+    points: 1,                            // 시작 스킬 1개
+    statPoints: 0,
+    gearAtk: 0, gearDef: 0, gearHp: 0
+  };
+}
+/* 경험치 획득 → 오른 레벨 수 (레벨당 스탯+3, 스킬+1) */
+function gainXp(sheet, amount) {
+  sheet.xp += amount;
+  let gained = 0;
+  while (sheet.xp >= xpToLevel(sheet.level)) {
+    sheet.xp -= xpToLevel(sheet.level);
+    sheet.level++;
+    gained++;
+    sheet.statPoints += 3;
+    sheet.points++;
+  }
+  return gained;
+}
+const canJobChange = sheet => sheet.level >= B.JOB_CHANGE_LEVEL && !sheet.advanced;
+function jobChange(sheet, pathKey) {
+  const p = PATHS[pathKey];
+  if (!canJobChange(sheet) || p.parent !== sheet.job) return false;
+  sheet.advanced = pathKey;
+  for (const k of STAT_IDS) sheet.stats[k] += (p.bonus[k] || 0);
+  return true;
+}
+function skillPool(sheet) {
+  const pool = BASE_TREES[sheet.job].slice();
+  if (sheet.advanced) pool.push(...PATHS[sheet.advanced].tree);
+  return pool;
+}
+const levelOf = (sheet, id) => sheet.learned[id] || 0;
+function canLearn(sheet, def) {
+  if (sheet.points <= 0) return false;
+  if (levelOf(sheet, def.id) >= def.maxLv) return false;
+  if (def.prereqId && levelOf(sheet, def.prereqId) < def.prereqLv) return false;
+  return true;
+}
+function learnSkill(sheet, def) {
+  if (!canLearn(sheet, def)) return false;
+  sheet.points--;
+  sheet.learned[def.id] = levelOf(sheet, def.id) + 1;
+  return true;
+}
+/* 시뮬레이션 자동 학습: 2차 트리 우선, 선행 충족되는 것부터 (CharacterSheet.AutoLearnSkills) */
+function autoLearnSkills(sheet) {
+  let learned = true;
+  while (learned && sheet.points > 0) {
+    learned = false;
+    const ordered = sheet.advanced
+      ? PATHS[sheet.advanced].tree.concat(BASE_TREES[sheet.job])
+      : BASE_TREES[sheet.job];
+    for (const def of ordered) {
+      if (canLearn(sheet, def)) { learnSkill(sheet, def); learned = true; break; }
+    }
+  }
+}
+function passiveSum(sheet, type) {
+  let sum = 0;
+  for (const def of skillPool(sheet)) {
+    const lv = levelOf(sheet, def.id);
+    if (lv > 0 && def.passive === type) sum += def.passiveValue * lv;
+  }
+  return sum;
+}
+/* 액티브 장착: 계수 상위 3개 자동 (SkillBook.EquipActives 정렬식 그대로) */
+function equipScore(def, lv) {
+  return (def.coef + def.coefPerLv * (lv - 1)) * (def.aoe ? 1.3 : 1)
+       + (def.healBase + def.healPerLv * (lv - 1)) * 2;
+}
+function equipActives(sheet) {
+  return skillPool(sheet)
+    .filter(d => !isPassive(d) && levelOf(sheet, d.id) > 0)
+    .sort((a, b) => equipScore(b, levelOf(sheet, b.id)) - equipScore(a, levelOf(sheet, a.id)))
+    .slice(0, B.SKILL_SLOTS)
+    .map(d => instantiateSkill(d, levelOf(sheet, d.id)));
+}
+/* SkillDef.Instantiate */
+function instantiateSkill(def, lv) {
+  return {
+    defId: def.id, name: def.name, level: lv,
+    cooldown: def.cooldown, cur: 0,
+    coef: def.coef > 0 ? def.coef + def.coefPerLv * (lv - 1) : 0,
+    aoe: def.aoe, magic: def.magic, element: def.element,
+    applies: def.applies, stacks: Math.max(1, def.stacksPerLv * lv),
+    healRatio: def.healBase > 0 ? def.healBase + def.healPerLv * (lv - 1) : 0,
+    shieldRatio: def.shieldRatio
+  };
+}
+/* CharacterSheet.Refresh — 유일한 파생 재계산 지점 */
+function refreshUnit(sheet, unit, bonus) {
+  const s = sheet.stats, cls = CHARS[sheet.job];
+  const newMaxHp = D.maxHp(s) + sheet.gearHp + bonus.hp;
+  const hpGain = newMaxHp - unit.maxHp;
+  unit.maxHp = newMaxHp;
+  if (hpGain > 0) unit.hp = Math.min(unit.maxHp, unit.hp + hpGain);
+  else unit.hp = Math.min(unit.hp, unit.maxHp);
+
+  unit.atk  = D.atk(s)  + sheet.gearAtk + bonus.atk + Math.trunc(passiveSum(sheet, 'atkFlat'));
+  unit.matk = D.matk(s) + sheet.gearAtk + bonus.atk + Math.trunc(passiveSum(sheet, 'matkFlat'));
+  unit.def  = D.def(s)  + sheet.gearDef + bonus.def + Math.trunc(passiveSum(sheet, 'defFlat'));
+  unit.mdef = D.mdef(s) + Math.trunc(sheet.gearDef / 2) + Math.trunc(bonus.def / 2);
+  unit.spd  = D.spd(s);
+  unit.crit = D.crit(s) + bonus.crit + passiveSum(sheet, 'critPct');
+  unit.evasion  = D.evasion(s) + cls.evasion + passiveSum(sheet, 'evadePct');
+  unit.accuracy = D.accuracy(s);
+}
+function buildUnit(sheet, bonus) {
+  const unit = { name: CHARS[sheet.job].name, maxHp:0, hp:0, atk:0, matk:0, def:0, mdef:0,
+                 spd:0, crit:0, evasion:0, accuracy:0.9, element:'neutral', st:{} };
+  refreshUnit(sheet, unit, bonus);
+  unit.hp = unit.maxHp;
+  return unit;
+}
+const burnOnHitChance   = sheet => passiveSum(sheet, 'burnOnHitPct');
+const hasCaptureTriple  = sheet => passiveSum(sheet, 'captureShieldTriple') > 0;
+const hasReviveBoost    = sheet => passiveSum(sheet, 'reviveBoost') > 0;
+const jobName = sheet => sheet.advanced ? PATHS[sheet.advanced].name : CHARS[sheet.job].name;
+
+/* ----- DamageCalc.cs: 명중/회피 → 물리·마법 → 속성 → 크리 ----- */
+function computeDamage(attacker, defender, skill, critBonus) {
+  const hitChance = Math.max(0.5, Math.min(1.0, attacker.accuracy - defender.evasion));
+  if (!chance(hitChance)) return { miss:true, dmg:0, crit:false, mult:1 };
+
+  const magic = !!(skill && skill.magic);
+  const atkStat = magic ? attacker.matk : attacker.atk;
+  const defStat = magic ? defender.mdef : defender.def;
+  const coef = (skill && skill.coef > 0) ? skill.coef : 1.0;
+  const element = skill ? skill.element : 'neutral';
+  const mult = elemMult(element, defender.element);
+
+  let dmg = atkStat * coef * (100 / (100 + defStat)) * mult;
+  const crit = chance(attacker.crit + critBonus);
+  if (crit) dmg *= B.CRIT_MULT;
+
+  return { miss:false, dmg: Math.max(1, Math.round(dmg)), crit, mult };
+}
+
+/* ----- 스킬 설명 헬퍼 ----- */
+function skillDesc(def, lv) {
+  const L = Math.max(1, lv);
+  const parts = [];
+  if (isPassive(def)) {
+    const v = def.passiveValue * L;
+    switch (def.passive) {
+      case 'atkFlat':  parts.push('물리 공격 +' + v); break;
+      case 'matkFlat': parts.push('마법 공격 +' + v); break;
+      case 'defFlat':  parts.push('방어 +' + v); break;
+      case 'critPct':  parts.push('크리 확률 +' + Math.round(v * 100) + '%p'); break;
+      case 'evadePct': parts.push('회피 +' + Math.round(v * 100) + '%p'); break;
+      case 'burnOnHitPct': parts.push('타격 시 화상 ' + Math.round(v * 100) + '%'); break;
+      case 'captureShieldTriple': parts.push('점령 칸 실드 3배'); break;
+      case 'reviveBoost': parts.push('부활 시 HP 70%'); break;
+    }
+    parts.push('패시브');
+  } else {
+    if (def.coef > 0) {
+      parts.push((def.magic ? '마법' : '물리') + ' ' + Math.round((def.coef + def.coefPerLv * (L - 1)) * 100) + '%');
+      if (def.element !== 'neutral') parts.push(ELEM_INFO[def.element].icon + ELEM_INFO[def.element].n);
+      if (def.aoe) parts.push('광역');
+    }
+    if (def.healBase > 0) parts.push('회복 ' + Math.round((def.healBase + def.healPerLv * (L - 1)) * 100) + '%');
+    if (def.shieldRatio > 0) parts.push('실드 ' + Math.round(def.shieldRatio * 100) + '%');
+    if (def.applies) parts.push(STATUS_INFO[def.applies].icon + STATUS_INFO[def.applies].n
+      + (def.stacksPerLv > 1 ? ' ×' + Math.max(1, def.stacksPerLv * L) : ''));
+    parts.push('쿨 ' + def.cooldown);
+  }
+  return parts.join(' · ');
+}
+function skillIcon(def) {
+  if (isPassive(def)) return '📘';
+  if (def.healBase > 0) return '✚';
+  if (def.shieldRatio > 0) return '🛡';
+  if (def.element !== 'neutral') return ELEM_INFO[def.element].icon;
+  return def.magic ? '🔮' : '⚔️';
+}
+
+/* =====================================================================
+ * 공용 헬퍼 + 메타 저장 (스키마 v2 마이그레이션)
  * ===================================================================== */
 const $ = id => document.getElementById(id);
-const randInt = (min, maxExcl) => min + Math.floor(Math.random() * (maxExcl - min)); // C# rng.Next 계열
+const randInt = (min, maxExcl) => min + Math.floor(Math.random() * (maxExcl - min));
 const chance = p => Math.random() < p;
 
 function showScreen(name) {
@@ -435,8 +1015,6 @@ function closeOverlay() {
   o.classList.remove('show');
   o.innerHTML = '';
 }
-
-/* 플로팅 텍스트: 대상 요소 중앙 기준 */
 function floatText(el, text, cls) {
   if (!el) return;
   const appRect = $('app').getBoundingClientRect();
@@ -452,7 +1030,7 @@ function floatText(el, text, cls) {
 function shake(el) {
   if (!el) return;
   el.classList.remove('shaking');
-  void el.offsetWidth; // 리플로우로 애니메이션 재시작
+  void el.offsetWidth;
   el.classList.add('shaking');
   setTimeout(() => el.classList.remove('shaking'), 320);
 }
@@ -461,8 +1039,6 @@ function flashHit(el) {
   el.classList.add('hitflash');
   setTimeout(() => el.classList.remove('hitflash'), T.HIT);
 }
-
-/* 게임 로그 (최근 3줄) */
 let logs = [];
 function log(msg) {
   logs.push(msg);
@@ -472,14 +1048,89 @@ function log(msg) {
     .join('');
 }
 
+/* ----- 저장 스키마: v1 { soul, hp, atk, def } → v2 (version 필드) ----- */
+const SAVE_KEY = 'diceDungeonMeta_v1';
+function defaultMeta() {
+  return {
+    version: 2,
+    soul: 0,
+    train: { hp:0, atk:0, def:0 },
+    relics: new Array(RELICS.length).fill(0),
+    unlocked: { rogue:false, mage:false, cleric:false },  // 기사는 기본
+    selected: 'knight',
+    totalRuns: 0, bestFloor: 0
+  };
+}
+let meta = defaultMeta();
+function migrateMeta(m) {
+  if (!m || typeof m !== 'object') return defaultMeta();
+  if (!m.version) {
+    // v1 → v2: 소울스톤·훈련 레벨 보존
+    const v2 = defaultMeta();
+    v2.soul = m.soul | 0;
+    v2.train = { hp: m.hp | 0, atk: m.atk | 0, def: m.def | 0 };
+    return v2;
+  }
+  // v2: 결손 필드 보강
+  const d = defaultMeta();
+  m.train = Object.assign(d.train, m.train || {});
+  m.unlocked = Object.assign(d.unlocked, m.unlocked || {});
+  if (!Array.isArray(m.relics)) m.relics = d.relics;
+  while (m.relics.length < RELICS.length) m.relics.push(0);
+  if (!CHAR_ORDER.includes(m.selected)) m.selected = 'knight';
+  m.soul = m.soul | 0;
+  m.totalRuns = m.totalRuns | 0;
+  m.bestFloor = m.bestFloor | 0;
+  return m;
+}
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    meta = migrateMeta(raw ? JSON.parse(raw) : null);
+  } catch (e) { meta = defaultMeta(); }
+}
+function saveMeta() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch (e) { /* private mode */ }
+}
+function resetMeta() {
+  if (!confirm('메타 성장(소울스톤·훈련·유물·해금)을 모두 초기화할까요?')) return;
+  meta = defaultMeta();
+  saveMeta();
+  renderTown();
+}
+const isUnlocked = id => id === 'knight' || !!meta.unlocked[id];
+function trainBonus() {
+  return { hp: meta.train.hp * TRAIN.hp.gain, atk: meta.train.atk * TRAIN.atk.gain, def: meta.train.def * TRAIN.def.gain };
+}
+/* 런 시작 보정치 집계 = 훈련소 + 유물 (RunConfig.From) */
+function runBonus() {
+  const t = trainBonus(), m = relicMods(meta.relics);
+  return { hp: t.hp + m.bonusHp, atk: t.atk + m.bonusAtk, def: t.def + m.bonusDef, crit: m.bonusCrit, mods: m };
+}
+
 /* =====================================================================
- * 마을 렌더링
+ * PART C — 마을 렌더링 + 런 상태/보드/타일
  * ===================================================================== */
 function renderTown() {
   $('townSoul').textContent = meta.soul;
 
+  /* 캐릭터 4종 선택/해금 */
+  $('charGrid').innerHTML = CHAR_ORDER.map(id => {
+    const c = CHARS[id], unlocked = isUnlocked(id), sel = meta.selected === id;
+    const paths = pathsFor(id).map(p => p.name).join(' / ');
+    return '<div class="char-card' + (sel ? ' sel' : '') + (unlocked ? '' : ' locked') +
+      '" onclick="tapChar(\'' + id + '\')">' +
+      '<div class="ci">' + c.icon + '</div>' +
+      '<div class="cn">' + c.name + '</div>' +
+      '<div class="cs">' + c.passiveDesc + '</div>' +
+      '<div class="cp">전직: ' + paths + '</div>' +
+      (unlocked ? '' : '<span class="unlock-tag">🔒 💠' + UNLOCK_COST + ' 해금</span>') +
+      '</div>';
+  }).join('');
+
+  /* 훈련소 3종 */
   $('trainPanel').innerHTML = Object.keys(TRAIN).map(k => {
-    const t = TRAIN[k], lv = meta[k], cost = trainCost(lv);
+    const t = TRAIN[k], lv = meta.train[k], cost = trainCost(lv);
     const afford = meta.soul >= cost;
     return '<div class="train-row">' +
       '<div class="train-info">' + t.icon + ' ' + t.label + ' <b>Lv.' + lv + '</b>' +
@@ -488,20 +1139,68 @@ function renderTown() {
       '💠 ' + cost + '<br><small style="font-size:10px">강화하기</small></button></div>';
   }).join('');
 
+  /* 유물 상점 12종 */
+  $('relicPanel').innerHTML = RELICS.map((r, i) => {
+    const lv = meta.relics[i], maxed = lv >= RELIC_MAX;
+    const cost = relicCost(lv);
+    return '<div class="relic-row">' +
+      '<div class="relic-info">' + r.icon + ' ' + r.name + ' <span class="rlv">Lv.' + lv + '</span>' +
+      '<small>' + r.per + ' / Lv (현재 Lv.' + lv + ')</small></div>' +
+      (maxed
+        ? '<button class="relic-btn maxed" disabled>MAX</button>'
+        : '<button class="relic-btn" onclick="buyRelic(' + i + ')"' +
+          (meta.soul >= cost ? '' : ' disabled') + '>💠 ' + cost + '</button>') +
+      '</div>';
+  }).join('');
+
+  /* 출전 정보: 선택 캐릭터 Lv1 파생 스탯 미리보기 */
+  const c = CHARS[meta.selected], bn = runBonus();
+  const s = c.base;
+  const bonusTag = v => v ? ' <span class="bonus">+' + v + '</span>' : '';
   $('statPreview').innerHTML =
-    '<div class="row"><span>❤️ HP</span><span>' + B.PLAYER_HP +
-      (bonusHp() ? ' <span class="bonus">+' + bonusHp() + '</span>' : '') + '</span></div>' +
-    '<div class="row"><span>⚔️ 공격</span><span>' + B.PLAYER_ATK +
-      (bonusAtk() ? ' <span class="bonus">+' + bonusAtk() + '</span>' : '') + '</span></div>' +
-    '<div class="row"><span>🛡️ 방어</span><span>' + B.PLAYER_DEF +
-      (bonusDef() ? ' <span class="bonus">+' + bonusDef() + '</span>' : '') + '</span></div>' +
-    '<div class="row"><span>🧪 포션</span><span>' + B.START_POTIONS + '개 (전투 중 HP 40% 회복)</span></div>';
+    '<div class="row"><span>' + c.icon + ' <b>' + c.name + '</b> (6스탯 합 ' +
+      STAT_IDS.reduce((a, k) => a + s[k], 0) + ')</span><span>' +
+      STAT_IDS.map(k => STAT_INFO[k].n + ' ' + s[k]).slice(0, 3).join(' · ') + '</span></div>' +
+    '<div class="row"><span></span><span>' +
+      STAT_IDS.map(k => STAT_INFO[k].n + ' ' + s[k]).slice(3).join(' · ') + '</span></div>' +
+    '<div class="row"><span>❤️ HP</span><span>' + D.maxHp(s) + bonusTag(bn.hp) + '</span></div>' +
+    '<div class="row"><span>⚔️ 물리 / 🔮 마법</span><span>' + D.atk(s) + bonusTag(bn.atk) +
+      ' / ' + D.matk(s) + bonusTag(bn.atk) + '</span></div>' +
+    '<div class="row"><span>🛡️ 방어 / 마방</span><span>' + D.def(s) + bonusTag(bn.def) +
+      ' / ' + D.mdef(s) + '</span></div>' +
+    '<div class="row"><span>🧪 포션</span><span>' + (B.START_POTIONS + bn.mods.startPotions) + '개</span></div>' +
+    (bn.mods.startGold ? '<div class="row"><span>💰 시작 골드</span><span class="bonus">+' + bn.mods.startGold + '</span></div>' : '') +
+    '<div class="row"><span>📊 최고 기록</span><span>' + meta.bestFloor + '층 · ' + meta.totalRuns + '런</span></div>';
+}
+function tapChar(id) {
+  if (isUnlocked(id)) {
+    meta.selected = id;
+    saveMeta();
+    renderTown();
+    return;
+  }
+  if (meta.soul < UNLOCK_COST) return; // 소울스톤 부족
+  meta.soul -= UNLOCK_COST;
+  meta.unlocked[id] = true;
+  meta.selected = id;
+  saveMeta();
+  renderTown();
 }
 function train(stat) {
-  const cost = trainCost(meta[stat]);
+  const cost = trainCost(meta.train[stat]);
   if (meta.soul < cost) return;
   meta.soul -= cost;
-  meta[stat]++;
+  meta.train[stat]++;
+  saveMeta();
+  renderTown();
+}
+function buyRelic(i) {
+  const lv = meta.relics[i];
+  if (lv >= RELIC_MAX) return;
+  const cost = relicCost(lv);
+  if (meta.soul < cost) return;
+  meta.soul -= cost;
+  meta.relics[i] = lv + 1;
   saveMeta();
   renderTown();
 }
@@ -512,29 +1211,42 @@ function train(stat) {
 let run = null;   // 현재 런
 let bt = null;    // 현재 전투
 let busy = false; // 입력 잠금 (연출 중)
+let uiMode = 'town'; // town|idle|anim|battle|levelup|jobchange|skilltree|shop|event|floorclear|result
 
 function startRun() {
+  const bn = runBonus();
+  const sheet = newSheet(meta.selected);
+  autoLearnSkills(sheet); // 시작 스킬 1개 (RunController 생성자와 동일)
+  const player = buildUnit(sheet, bn);
   run = {
+    charId: meta.selected, sheet, bonus: bn, mods: bn.mods,
     floor: 1, floorsCleared: 0,
-    gold: 0, potions: B.START_POTIONS,
+    gold: bn.mods.startGold,
+    potions: B.START_POTIONS + bn.mods.startPotions,
     kills: 0, gearCount: 0, diceRolls: 0,
-    pos: 0, tiles: [],
+    pos: 0, tiles: [], capturedThisFloor: 0,
+    rerollLeft: CHARS[meta.selected].reroll,
+    reviveLeft: CHARS[meta.selected].revive,
     alive: true,
-    player: {
-      maxHp: B.PLAYER_HP + bonusHp(), hp: B.PLAYER_HP + bonusHp(),
-      atk: B.PLAYER_ATK + bonusAtk(), def: B.PLAYER_DEF + bonusDef(),
-      spd: B.PLAYER_SPD, crit: B.PLAYER_CRIT
-    }
+    player,
+    skills: equipActives(sheet)
   };
   logs = [];
   showScreen('run');
   genFloor();
   log('🏰 던전 1층 — ' + themeOf(1).name + '에 진입했다.');
   busy = false;
+  uiMode = 'idle';
   updateHUD();
 }
+function refreshPlayer() {
+  refreshUnit(run.sheet, run.player, run.bonus);
+}
+function reequip() {
+  run.skills = equipActives(run.sheet);
+}
 
-/* ===== 층 생성 — FloorGenerator.cs와 동일 규칙 ===== */
+/* ===== 층 생성 ===== */
 function rollTileType() {
   const v = Math.random();
   let acc = B.TILE_BATTLE;
@@ -547,13 +1259,12 @@ function rollTileType() {
   if (v < acc) return 'event';
   acc += B.TILE_TRAP;
   if (v < acc) return 'trap';
-  return 'battle'; // 잔여 확률은 전투로
+  return 'battle';
 }
 function genFloor() {
   const size = B.BOARD_SIZE;
   const types = new Array(size).fill(null);
   types[0] = 'start';
-  // 보장 배치: 상점 1, 쉼터 1 (서로 다른 비출발 칸)
   const shopI = randInt(1, size);
   let restI;
   do { restI = randInt(1, size); } while (restI === shopI);
@@ -565,17 +1276,19 @@ function genFloor() {
   }
   run.tiles = types.map((t, i) => ({ index: i, type: t, captured: false }));
   run.pos = 0;
+  run.capturedThisFloor = 0;
+  run.rerollLeft = CHARS[run.charId].reroll; // 층당 1회 (RunController.PlayFloor)
   renderBoard();
   placeToken(false);
   updateCenter();
 }
 
-/* ===== 보드 렌더링: 7×7 그리드 둘레 = 24칸 ===== */
+/* ===== 보드 렌더링: 7×7 둘레 24칸 ===== */
 function tileGridPos(i) {
-  if (i <= 6)  return { r: 6,       c: i };       // 하단: 좌→우
-  if (i <= 12) return { r: 12 - i,  c: 6 };       // 우측: 하→상
-  if (i <= 18) return { r: 0,       c: 18 - i };  // 상단: 우→좌
-  return       { r: i - 18,         c: 0 };       // 좌측: 상→하
+  if (i <= 6)  return { r: 6,       c: i };
+  if (i <= 12) return { r: 12 - i,  c: 6 };
+  if (i <= 18) return { r: 0,       c: 18 - i };
+  return       { r: i - 18,         c: 0 };
 }
 function renderBoard() {
   const board = $('board');
@@ -595,18 +1308,21 @@ function renderBoard() {
   center.innerHTML =
     '<div class="bc-theme" id="bcTheme"></div>' +
     '<div class="bc-floor" id="bcFloor"></div>' +
+    '<div class="bc-elem" id="bcElem"></div>' +
     '<div class="dicewrap"><div class="die" id="die1">?</div><div class="die" id="die2">?</div></div>' +
     '<div class="bc-badges" id="bcBadges"></div>' +
     '<div class="bc-hint" id="bcHint"></div>';
   board.appendChild(center);
   const token = document.createElement('div');
   token.id = 'token';
-  token.textContent = '🤺';
+  token.textContent = CHARS[run.charId].icon;
   board.appendChild(token);
 }
 function updateCenter() {
+  const el = floorElement(run.floor);
   $('bcTheme').textContent = themeOf(run.floor).name;
   $('bcFloor').textContent = run.floor + 'F';
+  $('bcElem').textContent = '몬스터 속성: ' + ELEM_INFO[el].icon + ' ' + ELEM_INFO[el].n;
   $('bcHint').textContent = '🚪 완주까지 ' + (B.BOARD_SIZE - run.pos) + '칸 → 보스전';
 }
 function placeToken(hop) {
@@ -631,10 +1347,14 @@ function placeToken(hop) {
 /* ===== HUD ===== */
 function updateHUD() {
   if (!run) return;
-  const p = run.player;
+  const p = run.player, sh = run.sheet;
   $('hudFloor').textContent = run.floor;
+  $('hudJob').textContent = jobName(sh) + ' Lv.' + sh.level;
   $('hudGold').textContent = run.gold;
   $('hudSoul').textContent = meta.soul;
+  const need = xpToLevel(sh.level);
+  $('xpFill').style.width = Math.min(100, sh.xp / need * 100) + '%';
+  $('xpText').textContent = 'XP ' + sh.xp + ' / ' + need;
   const ratio = Math.max(0, p.hp / p.maxHp);
   const fill = $('hpFill');
   fill.style.width = (ratio * 100) + '%';
@@ -644,20 +1364,25 @@ function updateHUD() {
       ? 'linear-gradient(90deg,#e0a03a,#f0c05a)'
       : 'linear-gradient(90deg,#d84848,#f07a5a)';
   $('hpText').textContent = '❤️ ' + p.hp + ' / ' + p.maxHp;
-  $('subStats').textContent = '⚔️' + p.atk + ' 🛡️' + p.def;
-  $('btnFieldPotion').innerHTML = '🧪 ×' + run.potions + '<br><small style="font-size:10px;font-weight:600">HP 40%</small>';
+  $('subStats').textContent = '⚔️' + p.atk + ' 🔮' + p.matk + ' 🛡️' + p.def + '/' + p.mdef;
+  $('btnFieldPotion').innerHTML = '🧪 ×' + run.potions + '<br><small style="font-size:9px;font-weight:600">HP 40%</small>';
   $('btnFieldPotion').disabled = busy || run.potions <= 0 || p.hp >= p.maxHp;
   $('btnRoll').disabled = busy;
+  $('btnTree').disabled = busy;
+  const badge = $('treeBadge');
+  const pts = sh.points + sh.statPoints;
+  badge.style.display = pts > 0 ? 'flex' : 'none';
+  badge.textContent = pts;
 }
 function setBusy(v) {
   busy = v;
   updateHUD();
 }
 
-/* ===== 플레이어 회복/피해 ===== */
+/* ===== 플레이어 회복/피해 (필드) ===== */
 function healRatio(ratio, srcLabel) {
   const p = run.player;
-  const amt = Math.round(p.maxHp * ratio); // Unit.HealRatio와 동일 (반올림)
+  const amt = Math.round(p.maxHp * ratio);
   const real = Math.min(p.maxHp - p.hp, amt);
   p.hp = Math.min(p.maxHp, p.hp + amt);
   if (real > 0) floatText($('token') || $('hpFill'), '+' + real, 'heal');
@@ -682,11 +1407,11 @@ function addGold(g, label) {
   updateHUD();
 }
 function addGear(silent) {
-  const f = run.floor, p = run.player;
+  const f = run.floor, sh = run.sheet;
   const a = B.gearAtk(f), d = B.gearDef(f), h = B.gearHp(f);
   run.gearCount++;
-  p.atk += a; p.def += d;
-  p.maxHp += h; p.hp = Math.min(p.maxHp, p.hp + h);
+  sh.gearAtk += a; sh.gearDef += d; sh.gearHp += h;
+  refreshPlayer(); // maxHp 증가분만큼 현재 HP도 증가
   if (!silent) floatText($('token'), '🗡️ 장비!', 'info');
   log('🗡️ 장비 획득! ⚔️+' + a + ' 🛡️+' + d + ' ❤️+' + h);
   updateHUD();
@@ -705,6 +1430,7 @@ function useFieldPotion() {
 function rollDice() {
   if (busy || !run || !run.alive) return;
   setBusy(true);
+  uiMode = 'anim';
   $('bcBadges').innerHTML = '';
   const d1El = $('die1'), d2El = $('die2');
   d1El.classList.add('rolling');
@@ -716,27 +1442,36 @@ function rollDice() {
 
   setTimeout(() => {
     clearInterval(tick);
-    const d1 = randInt(1, 7), d2 = randInt(1, 7);
-    const info = { d1: d1, d2: d2, sum: d1 + d2, isDouble: d1 === d2, isSeven: d1 + d2 === 7 };
+    let d1 = randInt(1, 7), d2 = randInt(1, 7);
     run.diceRolls++;
+    let rerolled = false;
+    // 도적 패시브: 층당 1회, 낮은 눈(합≤4)이면 무료 리롤 (RunController.PlayFloor)
+    if (run.rerollLeft && d1 + d2 <= 4) {
+      run.rerollLeft = false;
+      rerolled = true;
+      d1 = randInt(1, 7); d2 = randInt(1, 7);
+      run.diceRolls++;
+    }
+    const info = { d1, d2, sum: d1 + d2, isDouble: d1 === d2, isSeven: d1 + d2 === 7 };
     d1El.classList.remove('rolling'); d2El.classList.remove('rolling');
     d1El.textContent = d1; d2El.textContent = d2;
     d1El.classList.add('landed'); d2El.classList.add('landed');
     setTimeout(() => { d1El.classList.remove('landed'); d2El.classList.remove('landed'); }, 320);
 
     let badges = '';
-    if (info.isDouble) badges += '<div class="badge">✨ 더블! 다음 전투 선제공격</div>';
+    if (rerolled) badges += '<div class="badge">🥷 도적의 리롤!</div>';
+    if (info.isDouble) badges += '<div class="badge">✨ 더블! 선제공격</div>';
     if (info.isSeven)  badges += '<div class="badge">🍀 럭키 7! 크리티컬 +15%</div>';
     $('bcBadges').innerHTML = badges;
     log('🎲 주사위: ' + d1 + ' + ' + d2 + ' = ' + info.sum +
-        (info.isDouble ? ' (더블!)' : '') + (info.isSeven ? ' (럭키 7!)' : ''));
+        (rerolled ? ' (리롤)' : '') + (info.isDouble ? ' (더블!)' : '') + (info.isSeven ? ' (럭키 7!)' : ''));
 
     setTimeout(() => moveSteps(info), 380);
   }, T.DICE);
 }
 
 function moveSteps(info) {
-  const lapComplete = run.pos + info.sum >= B.BOARD_SIZE; // RunController.PlayFloor와 동일 판정
+  const lapComplete = run.pos + info.sum >= B.BOARD_SIZE;
   let remaining = info.sum;
   const step = () => {
     run.pos = (run.pos + 1) % B.BOARD_SIZE;
@@ -751,8 +1486,7 @@ function moveSteps(info) {
 
 function land(lapComplete, info) {
   if (lapComplete) {
-    // 완주 보너스 → 즉시 보스전 (프로토타입 규칙: 착지 칸 이벤트는 생략)
-    const g = B.lapBonusGold(run.floor);
+    const g = Math.trunc(B.lapBonusGold(run.floor) * run.mods.lapGoldMult);
     addGold(g, '한 바퀴 완주!');
     log('👑 보스 게이트가 열렸다...');
     setTimeout(() => startBossBattle(info), 850);
@@ -762,10 +1496,11 @@ function land(lapComplete, info) {
 }
 
 /* =====================================================================
- * 타일 이벤트 — RunController.ResolveTile과 동일 규칙
+ * 타일 이벤트 — RunController.ResolveTile 규칙
  * ===================================================================== */
 function endTurn() {
   if (!run || !run.alive) return;
+  uiMode = 'idle';
   setBusy(false);
 }
 
@@ -777,7 +1512,7 @@ function resolveTile(info) {
     case 'battle':
     case 'elite': {
       if (tile.captured) {
-        healRatio(B.CAPTURED_HEAL, '점령지(내 땅)에서 정비.');
+        healRatio(B.CAPTURED_HEAL + run.mods.captureHealBonus, '점령지(내 땅)에서 정비.');
         endTurn();
         return;
       }
@@ -788,9 +1523,10 @@ function resolveTile(info) {
         title: elite ? '☠️ 정예 전투!' : '⚔️ 전투!',
         onWin: () => {
           tile.captured = true;
+          run.capturedThisFloor++;
           const el = $('tile-' + tile.index);
           if (el) el.classList.add('captured');
-          log('🚩 칸을 점령했다! (재방문 시 HP 15% 회복)');
+          log('🚩 칸을 점령했다! (재방문 회복 · 전투 실드 +)');
           addGold(B.battleGold(f) * (elite ? 2 : 1), elite ? '정예 처치! (2배)' : '전투 승리!');
           if (elite) addGear();
           endTurn();
@@ -820,13 +1556,15 @@ function resolveTile(info) {
       openShop();
       return;
 
-    case 'rest':
-      healRatio(B.REST_HEAL, '모닥불에서 휴식.');
+    case 'rest': {
+      const mult = CHARS[run.charId].restHeal2 ? 2 : 1; // 성직자: 쉼터 회복 2배
+      healRatio(B.REST_HEAL * mult + run.mods.restHealBonus, '모닥불에서 휴식.');
       endTurn();
       return;
+    }
 
     case 'trap': {
-      if (chance(B.TRAP_AVOID)) {
+      if (chance(B.TRAP_AVOID + run.mods.trapAvoidBonus)) {
         log('🤸 함정을 재빠르게 회피했다!');
         floatText($('token'), '회피!', 'info');
         endTurn();
@@ -841,79 +1579,98 @@ function resolveTile(info) {
       openEvent();
       return;
 
-    default: // start 등
+    default:
       endTurn();
       return;
   }
 }
 
-/* ===== 이벤트 칸 (RunController.ResolveEvent 확률 그대로) ===== */
+/* ===== 이벤트 칸 (마법사: 나쁜 결과 1회 리롤) ===== */
+let eventApply = null;
 function openEvent() {
   const f = run.floor;
-  const v = Math.random();
-  let text, apply;
+  let v = Math.random();
+  let mageRerolled = false;
+  if (CHARS[run.charId].bestEvent && v >= 0.40 && v < 0.75) {
+    v = Math.random();
+    mageRerolled = true;
+  }
+  let text;
   if (v < 0.40) {
     const g = B.treasureGold(f);
     text = '무너진 제단 아래에서 금화 주머니를 발견했다!<br><b style="color:#ffd76a">💰 골드 +' + g + '</b>';
-    apply = () => { addGold(g, '이벤트:'); endTurn(); };
+    eventApply = () => { addGold(g, '이벤트:'); endTurn(); };
   } else if (v < 0.75) {
     const dmg = Math.floor(run.player.maxHp * 0.08);
     text = '어둠 속에서 무언가가 스치고 지나갔다...<br><b style="color:#ff6a5e">💢 피해 -' + dmg + '</b>';
-    apply = () => { if (damagePlayerField(dmg, '불길한 기운!')) endTurn(); };
+    eventApply = () => { if (damagePlayerField(dmg, '불길한 기운!')) endTurn(); };
   } else {
     text = '떠돌이 대장장이가 낡은 장비를 건네주었다!<br><b style="color:#b8aef5">🗡️ 장비 획득</b>';
-    apply = () => { addGear(); endTurn(); };
+    eventApply = () => { addGear(); endTurn(); };
   }
+  uiMode = 'event';
   overlay(
     '<div class="m-title">❓ 이벤트</div>' +
-    '<div class="m-sub">' + themeOf(f).name + ' ' + f + '층</div>' +
+    '<div class="m-sub">' + themeOf(f).name + ' ' + f + '층' +
+      (mageRerolled ? ' — 🧙 마법사의 통찰로 다시 선택!' : '') + '</div>' +
     '<p style="font-size:14.5px;line-height:1.8;margin:10px 0 4px">' + text + '</p>' +
-    '<button class="m-btn" id="btnEventOk">확인</button>'
+    '<button class="m-btn" onclick="eventOk()">확인</button>'
   );
-  $('btnEventOk').onclick = () => { closeOverlay(); apply(); };
+}
+function eventOk() {
+  closeOverlay();
+  const fn = eventApply;
+  eventApply = null;
+  if (fn) fn();
 }
 
-/* ===== 상점 ===== */
+/* ===== 상점 (상인의 인장: 할인) ===== */
+function shopPrices() {
+  const f = run.floor, disc = 1 - run.mods.shopDiscount;
+  return { pot: Math.trunc(B.potionPrice(f) * disc), gear: Math.trunc(B.gearPrice(f) * disc) };
+}
 function openShop() {
+  uiMode = 'shop';
   renderShop();
   log('⚖️ 상인을 만났다.');
 }
 function renderShop() {
-  const f = run.floor;
-  const pp = B.potionPrice(f), gp = B.gearPrice(f);
+  const f = run.floor, pr = shopPrices();
   overlay(
     '<div class="m-title">⚖️ 던전 상점</div>' +
-    '<div class="m-sub">' + f + '층 시세 — 보유 💰 <b id="shopGold">' + run.gold + '</b></div>' +
-    '<div class="shop-item"><div class="info">🧪 포션<small>전투/이동 중 HP 40% 회복 (보유 ' +
+    '<div class="m-sub">' + f + '층 시세' +
+      (run.mods.shopDiscount > 0 ? ' (🪙 ' + Math.round(run.mods.shopDiscount * 100) + '% 할인)' : '') +
+      ' — 보유 💰 <b id="shopGold">' + run.gold + '</b></div>' +
+    '<div class="shop-item"><div class="info">🧪 포션<small>HP 40% 회복 (보유 ' +
       '<span id="shopPot">' + run.potions + '</span>개)</small></div>' +
-      '<button class="buy-btn" id="buyPot" onclick="buyPotion()">💰 ' + pp + '</button></div>' +
+      '<button class="buy-btn" id="buyPot" onclick="buyPotion()">💰 ' + pr.pot + '</button></div>' +
     '<div class="shop-item"><div class="info">🗡️ 장비<small>⚔️+' + B.gearAtk(f) + ' 🛡️+' + B.gearDef(f) +
       ' ❤️+' + B.gearHp(f) + ' (층 비례 성장)</small></div>' +
-      '<button class="buy-btn" id="buyGear" onclick="buyGear()">💰 ' + gp + '</button></div>' +
+      '<button class="buy-btn" id="buyGear" onclick="buyGear()">💰 ' + pr.gear + '</button></div>' +
     '<button class="m-btn dark" onclick="closeShop()">나가기</button>'
   );
   refreshShopButtons();
 }
 function refreshShopButtons() {
-  const f = run.floor;
+  const pr = shopPrices();
   $('shopGold').textContent = run.gold;
   $('shopPot').textContent = run.potions;
-  $('buyPot').disabled = run.gold < B.potionPrice(f);
-  $('buyGear').disabled = run.gold < B.gearPrice(f);
+  $('buyPot').disabled = run.gold < pr.pot;
+  $('buyGear').disabled = run.gold < pr.gear;
 }
 function buyPotion() {
-  const price = B.potionPrice(run.floor);
-  if (run.gold < price) return;
-  run.gold -= price;
+  const pr = shopPrices();
+  if (run.gold < pr.pot) return;
+  run.gold -= pr.pot;
   run.potions++;
-  log('🧪 포션 구매 (-' + price + 'G)');
+  log('🧪 포션 구매 (-' + pr.pot + 'G)');
   updateHUD();
   refreshShopButtons();
 }
 function buyGear() {
-  const price = B.gearPrice(run.floor);
-  if (run.gold < price) return;
-  run.gold -= price;
+  const pr = shopPrices();
+  if (run.gold < pr.gear) return;
+  run.gold -= pr.gear;
   addGear(true);
   updateHUD();
   refreshShopButtons();
@@ -924,50 +1681,40 @@ function closeShop() {
 }
 
 /* =====================================================================
- * 전투 — BattleSimulator.cs 공식 이식 + 수동 턴제 UI
+ * PART D — 전투 (InteractiveBattle.cs 이식: 플레이어 행동 + 몬스터 반격 = 1라운드)
  * ===================================================================== */
 function makeMonsters(floor, elite, mimic) {
   const th = themeOf(floor);
   const hp = B.monsterHp(floor), atk = B.monsterAtk(floor), def = B.monsterDef(floor);
+  const element = floorElement(floor);
+  const mk = (name, emoji, mhp, matk, spd, isBoss) => ({
+    name, emoji, isBoss: !!isBoss,
+    maxHp: mhp, hp: mhp, atk: matk, matk: matk, def, mdef: def,
+    spd, crit: 0.05, evasion: 0, accuracy: 0.9, element, st: {}
+  });
   if (elite) {
-    return [{
-      name: '정예 ' + th.mobName, emoji: '👹',
-      maxHp: Math.floor(hp * B.ELITE_HP_MULT), hp: Math.floor(hp * B.ELITE_HP_MULT),
-      atk: Math.floor(atk * B.ELITE_ATK_MULT), def: def, spd: 9, crit: B.MONSTER_CRIT
-    }];
+    return [mk('정예 ' + th.mobName, '👹', Math.floor(hp * B.ELITE_HP_MULT), Math.floor(atk * B.ELITE_ATK_MULT), 9)];
   }
   if (mimic) {
-    return [{ name: '미믹', emoji: '📦', maxHp: hp, hp: hp, atk: atk, def: def, spd: 8, crit: B.MONSTER_CRIT }];
+    return [mk('미믹', '📦', hp, atk, 8)];
   }
-  // 1~2층은 1마리 고정 (튜토리얼 보호), 이후 1~2마리
   const count = floor <= B.SOLO_MONSTER_FLOORS ? 1 : randInt(1, 3);
   const list = [];
   for (let i = 0; i < count; i++) {
-    list.push({
-      name: th.mobName + (count > 1 ? ' ' + (i + 1) : ''),
-      emoji: th.mobs[randInt(0, th.mobs.length)],
-      maxHp: hp, hp: hp, atk: atk, def: def, spd: 8, crit: B.MONSTER_CRIT
-    });
+    list.push(mk(th.mobName + (count > 1 ? ' ' + (i + 1) : ''), th.mobs[randInt(0, th.mobs.length)], hp, atk, 8));
   }
   return list;
 }
 function makeBoss(floor) {
   const th = themeOf(floor);
+  const hp = Math.floor(B.monsterHp(floor) * B.BOSS_HP_MULT);
+  const atk = Math.floor(B.monsterAtk(floor) * B.BOSS_ATK_MULT);
+  const def = B.monsterDef(floor);
   return [{
     name: th.bossName, emoji: th.boss, isBoss: true,
-    maxHp: Math.floor(B.monsterHp(floor) * B.BOSS_HP_MULT),
-    hp:    Math.floor(B.monsterHp(floor) * B.BOSS_HP_MULT),
-    atk:   Math.floor(B.monsterAtk(floor) * B.BOSS_ATK_MULT),
-    def:   B.monsterDef(floor), spd: 9, crit: B.MONSTER_CRIT
+    maxHp: hp, hp, atk, matk: atk, def, mdef: def,
+    spd: 9, crit: 0.05, evasion: 0, accuracy: 0.9, element: floorElement(floor), st: {}
   }];
-}
-
-/* 피해 공식: ATK × 100/(100+DEF) × 크리 1.5 (02-시스템설계 1.2) */
-function calcDamage(atk, def, critChance) {
-  let dmg = atk * (100 / (100 + def));
-  const crit = chance(critChance);
-  if (crit) dmg *= B.CRIT_MULT;
-  return { dmg: Math.max(1, Math.round(dmg)), crit: crit };
 }
 
 function startBossBattle(info) {
@@ -981,38 +1728,52 @@ function startBossBattle(info) {
 }
 
 function startBattle(cfg) {
+  const c = CHARS[run.charId], sh = run.sheet;
+  // 점령 칸 실드: 기본 2/칸 × 기사 2배 × 요새화 3배 + 마법사 방벽 (RunController.Fight)
+  const perTile = 2 * (c.captureShield2 ? 2 : 1) * (hasCaptureTriple(sh) ? 3 : 1);
+  const startShield = run.capturedThisFloor * perTile + Math.trunc(run.player.maxHp * c.barrier);
   bt = {
     monsters: cfg.monsters,
-    critBonus: cfg.info && cfg.info.isSeven ? 0.15 : 0, // 럭키세븐 (02-시스템설계 1.3)
-    playerFirst: !!(cfg.info && cfg.info.isDouble),      // 더블 선제공격
+    critBonus: cfg.info && cfg.info.isSeven ? 0.15 : 0,
+    playerFirst: !!(cfg.info && cfg.info.isDouble),
+    firstRound: true,
     defending: false,
+    shield: startShield,
+    burnOnHit: burnOnHitChance(sh),
+    reviveRatio: hasReviveBoost(sh) ? 0.7 : 0.5, // 소생의 빛: 부활 HP 70%
     isBoss: !!cfg.isBoss,
     title: cfg.title,
     onWin: cfg.onWin,
+    xpKills: 0,
     locked: true
   };
   let badges = '';
-  if (bt.playerFirst) badges += '<div class="badge">✨ 더블 — 선제공격!</div>';
+  if (bt.playerFirst) badges += '<div class="badge">✨ 더블 — 선제공격! (첫 턴 반격 없음)</div>';
   if (bt.critBonus > 0) badges += '<div class="badge">🍀 럭키 7 — 크리티컬 +15%</div>';
+  if (startShield > 0) badges += '<div class="badge">🛡 시작 실드 ' + startShield + '</div>';
 
   const enemies = bt.monsters.map((m, i) =>
     '<div class="enemy" id="bt-en-' + i + '">' +
       '<div class="e-sprite' + (m.isBoss ? ' boss' : '') + '">' + m.emoji + '</div>' +
-      '<div class="e-name">' + m.name + '</div>' +
+      '<div class="e-name">' + ELEM_INFO[m.element].icon + ' ' + m.name + '</div>' +
       '<div class="ehp"><div class="ehpfill" id="bt-ehp-' + i + '" style="width:100%"></div></div>' +
       '<div class="ehptext" id="bt-eht-' + i + '">' + m.hp + ' / ' + m.maxHp + '</div>' +
+      '<div class="chips" id="bt-chips-' + i + '"></div>' +
     '</div>'
   ).join('');
 
+  uiMode = 'battle';
   overlay(
     '<div class="m-title' + (bt.isBoss ? ' boss' : '') + '">' + bt.title + '</div>' +
     '<div class="m-badges">' + badges + '</div>' +
     '<div class="enemyRow">' + enemies + '</div>' +
     '<div id="btMsg"></div>' +
     '<div class="pl-row" id="btPlRow">' +
-      '<div class="pl-sprite">🤺</div>' +
+      '<div class="pl-sprite">' + CHARS[run.charId].icon + '</div>' +
       '<div class="pl-hp"><div class="hpbar"><div class="hpfill" id="btPhpFill"></div><span id="btPhpText"></span></div></div>' +
+      '<div class="pl-shield" id="btShield"></div>' +
     '</div>' +
+    '<div class="skillbar" id="btSkillBar"></div>' +
     '<div class="actions">' +
       '<button class="act-btn atk" id="btnAtk" onclick="btAttack()">⚔️ 공격</button>' +
       '<button class="act-btn def" id="btnDef" onclick="btDefend()">🛡️ 방어<small>피해 50%↓</small></button>' +
@@ -1021,9 +1782,35 @@ function startBattle(cfg) {
     'battle'
   );
   updateBattleUI();
-  // 더블 여부와 무관하게 플레이어(스피드 10)가 최속이므로 선공 —
-  // 더블은 배지로 표기 (BattleSimulator 턴 순서와 동일한 결과)
   setTimeout(playerTurnStart, 400);
+}
+
+function renderSkillBar(enabled) {
+  const bar = $('btSkillBar');
+  if (!bar) return;
+  const cells = [];
+  for (let i = 0; i < B.SKILL_SLOTS; i++) {
+    const s = run.skills[i];
+    if (!s) {
+      cells.push('<button class="sk-act empty" disabled>—<small>빈 슬롯</small></button>');
+      continue;
+    }
+    const sub = [];
+    if (s.coef > 0) sub.push((s.magic ? '🔮' : '⚔️') + Math.round(s.coef * 100) + '%');
+    if (s.healRatio > 0) sub.push('✚' + Math.round(s.healRatio * 100) + '%');
+    if (s.shieldRatio > 0) sub.push('🛡' + Math.round(s.shieldRatio * 100) + '%');
+    if (s.element !== 'neutral') sub.push(ELEM_INFO[s.element].icon);
+    if (s.aoe) sub.push('광역');
+    if (s.applies) sub.push(STATUS_INFO[s.applies].icon);
+    const onCd = s.cur > 0;
+    cells.push('<button class="sk-act" id="btnSk' + i + '" onclick="btSkill(' + i + ')"' +
+      ((enabled && !onCd) ? '' : ' disabled') + '>' +
+      s.name + ' <span style="color:#ffd76a">Lv' + s.level + '</span>' +
+      '<small>' + sub.join(' ') + ' · 쿨' + s.cooldown + '</small>' +
+      (onCd ? '<span class="cd-mask">⏳' + s.cur + '</span>' : '') +
+      '</button>');
+  }
+  bar.innerHTML = cells.join('');
 }
 
 function battleButtons(enabled) {
@@ -1036,21 +1823,33 @@ function battleButtons(enabled) {
     pot.innerHTML = '🧪 포션 ×' + run.potions + '<small>HP 40%</small>';
     if (enabled && (run.potions <= 0 || run.player.hp >= run.player.maxHp)) pot.disabled = true;
   }
+  renderSkillBar(enabled);
 }
 function btMsg(t) {
   const el = $('btMsg');
   if (el) el.textContent = t;
 }
+function renderChips(m, i) {
+  const box = $('bt-chips-' + i);
+  if (!box) return;
+  box.innerHTML = Object.keys(m.st).map(k => {
+    const s = STATUS_INFO[k], e = m.st[k];
+    return '<span class="chip ' + s.cls + '">' + s.icon + s.n +
+      (e.stacks > 1 ? '×' + e.stacks : '') + '</span>';
+  }).join('');
+}
 function updateBattleUI() {
+  if (!bt) return;
   bt.monsters.forEach((m, i) => {
     const fill = $('bt-ehp-' + i), txt = $('bt-eht-' + i), box = $('bt-en-' + i);
     if (!fill) return;
     fill.style.width = Math.max(0, m.hp / m.maxHp * 100) + '%';
     txt.textContent = m.hp + ' / ' + m.maxHp;
     if (m.hp <= 0) box.classList.add('dead');
+    renderChips(m, i);
   });
   const p = run.player;
-  const fill = $('btPhpFill'), txt = $('btPhpText');
+  const fill = $('btPhpFill'), txt = $('btPhpText'), shEl = $('btShield');
   if (fill) {
     const r = Math.max(0, p.hp / p.maxHp);
     fill.style.width = (r * 100) + '%';
@@ -1058,6 +1857,7 @@ function updateBattleUI() {
       : r > 0.25 ? 'linear-gradient(90deg,#e0a03a,#f0c05a)' : 'linear-gradient(90deg,#d84848,#f07a5a)';
     txt.textContent = '❤️ ' + p.hp + ' / ' + p.maxHp;
   }
+  if (shEl) shEl.textContent = bt.shield > 0 ? '🛡 ' + bt.shield : '';
   updateHUD();
 }
 
@@ -1068,37 +1868,86 @@ function playerTurnStart() {
   btMsg('▶ 당신의 턴');
   battleButtons(true);
 }
-
 function aliveMonsters() { return bt.monsters.filter(m => m.hp > 0); }
+
+/* 플레이어 타격 (기본 공격 or 공격 스킬) — InteractiveBattle.PlayerStrike */
+function playerStrike(skill) {
+  const aoe = !!(skill && skill.aoe);
+  const alive = aliveMonsters().slice().sort((a, b) => a.hp - b.hp);
+  const targets = aoe ? aliveMonsters() : alive.slice(0, 1);
+  let msgParts = [];
+
+  for (const t of targets) {
+    const idx = bt.monsters.indexOf(t);
+    const enEl = $('bt-en-' + idx);
+    const r = computeDamage(run.player, t, skill, bt.critBonus);
+    if (r.miss) {
+      floatText(enEl, 'MISS', 'miss');
+      msgParts.push(t.name + ' 회피!');
+      continue;
+    }
+    t.hp = Math.max(0, t.hp - r.dmg);
+    flashHit(enEl);
+    shake($('modalBox'));
+    floatText(enEl, (r.crit ? '크리! -' : '-') + r.dmg, r.crit ? 'crit' : 'dmg');
+    if (r.mult > 1) floatText(enEl, '효과적! ×' + r.mult, 'eff');
+    else if (r.mult < 1) floatText(enEl, '비효과적 ×' + r.mult, 'res');
+    msgParts.push(t.name + ' -' + r.dmg + (r.crit ? ' 크리!' : ''));
+
+    if (t.hp > 0) {
+      if (skill && skill.applies) {
+        applyStatus(t, skill.applies, Math.max(1, skill.stacks));
+      } else if (bt.burnOnHit > 0 && chance(bt.burnOnHit)) {
+        applyStatus(t, 'burn', 1); // 룬 나이트 발화
+        floatText(enEl, '🔥 발화!', 'eff');
+      }
+    } else {
+      run.kills++;
+      bt.xpKills++;
+      log('☠️ ' + t.name + ' 처치!');
+    }
+  }
+  btMsg((skill ? '💫 ' + skill.name + '! ' : '⚔️ ') + msgParts.join(' / '));
+  updateBattleUI();
+}
 
 function btAttack() {
   if (!bt || bt.locked) return;
   bt.locked = true;
   battleButtons(false);
-  // 시뮬레이터와 동일: HP가 가장 낮은 적 우선
-  const alive = aliveMonsters().sort((a, b) => a.hp - b.hp);
-  const target = alive[0];
-  const idx = bt.monsters.indexOf(target);
-  const r = calcDamage(run.player.atk, target.def, run.player.crit + bt.critBonus);
-  target.hp = Math.max(0, target.hp - r.dmg);
-
-  const enEl = $('bt-en-' + idx);
-  flashHit(enEl);
-  shake($('modalBox'));
-  floatText(enEl, (r.crit ? '크리! -' : '-') + r.dmg, r.crit ? 'crit' : 'dmg');
-  btMsg(r.crit ? '💥 크리티컬! ' + target.name + '에게 ' + r.dmg : '⚔️ ' + target.name + '에게 ' + r.dmg);
-  updateBattleUI();
-
-  if (target.hp <= 0) {
-    run.kills++;
-    log('☠️ ' + target.name + ' 처치!');
-  }
-  setTimeout(() => {
-    if (aliveMonsters().length === 0) winBattle();
-    else monsterPhase();
-  }, 620);
+  playerStrike(null);
+  setTimeout(afterPlayerAction, 620);
 }
-
+function btSkill(i) {
+  if (!bt || bt.locked) return;
+  const s = run.skills[i];
+  if (!s || s.cur > 0) return;
+  bt.locked = true;
+  battleButtons(false);
+  s.cur = s.cooldown;
+  if (s.healRatio > 0 || s.shieldRatio > 0) {
+    // 회복/실드 스킬 (InteractiveBattle.DoRound Skill 분기)
+    let msg = [];
+    if (s.healRatio > 0) {
+      const amt = Math.trunc(run.player.maxHp * s.healRatio);
+      const real = Math.min(run.player.maxHp - run.player.hp, amt);
+      run.player.hp = Math.min(run.player.maxHp, run.player.hp + amt);
+      floatText($('btPlRow'), '+' + real, 'heal');
+      msg.push('HP +' + real);
+    }
+    if (s.shieldRatio > 0) {
+      const gain = Math.trunc(run.player.maxHp * s.shieldRatio);
+      bt.shield += gain;
+      floatText($('btPlRow'), '🛡 +' + gain, 'info');
+      msg.push('실드 +' + gain);
+    }
+    btMsg('💫 ' + s.name + '! ' + msg.join(' · '));
+    updateBattleUI();
+  } else {
+    playerStrike(s);
+  }
+  setTimeout(afterPlayerAction, 620);
+}
 function btDefend() {
   if (!bt || bt.locked) return;
   bt.locked = true;
@@ -1106,23 +1955,36 @@ function btDefend() {
   bt.defending = true;
   btMsg('🛡️ 방어 태세! 받는 피해 50% 감소');
   log('🛡️ 방어 태세를 취했다.');
-  setTimeout(monsterPhase, 420);
+  setTimeout(afterPlayerAction, 420);
 }
-
 function btPotion() {
   if (!bt || bt.locked) return;
   if (run.potions <= 0 || run.player.hp >= run.player.maxHp) return;
   bt.locked = true;
   battleButtons(false);
   run.potions--;
-  const amt = Math.round(run.player.maxHp * B.POTION_HEAL);
+  const amt = Math.trunc(run.player.maxHp * B.POTION_HEAL);
   const real = Math.min(run.player.maxHp - run.player.hp, amt);
   run.player.hp = Math.min(run.player.maxHp, run.player.hp + amt);
   floatText($('btPlRow'), '+' + real, 'heal');
   btMsg('🧪 포션! HP +' + real);
   log('🧪 포션으로 HP ' + real + ' 회복');
   updateBattleUI();
-  setTimeout(monsterPhase, 520);
+  setTimeout(afterPlayerAction, 520);
+}
+
+/* 플레이어 행동 후: 승리 확인 → 몬스터 반격 → 쿨다운 감소 */
+function afterPlayerAction() {
+  if (!bt) return;
+  if (aliveMonsters().length === 0) { winBattle(); return; }
+  const monstersSkip = bt.firstRound && bt.playerFirst;
+  bt.firstRound = false;
+  if (monstersSkip) {
+    btMsg('✨ 선제공격! 몬스터가 반격하지 못한다');
+    endRound();
+    return;
+  }
+  monsterPhase();
 }
 
 function monsterPhase() {
@@ -1130,33 +1992,102 @@ function monsterPhase() {
   let i = 0;
   const next = () => {
     if (!bt) return;
-    if (i >= list.length) { playerTurnStart(); return; }
+    if (i >= list.length) { endRound(); return; }
     const m = list[i++];
     if (m.hp <= 0) { next(); return; }
-    const r = calcDamage(m.atk, run.player.def, m.crit);
+    const idx = bt.monsters.indexOf(m);
+    const enEl = $('bt-en-' + idx);
+
+    // 턴 시작: 상태이상 도트/기절 (InteractiveBattle 몬스터 턴)
+    const tick = tickStatuses(m);
+    if (tick.damage > 0) {
+      m.hp = Math.max(0, m.hp - tick.damage);
+      floatText(enEl, '-' + tick.damage + ' ☠', 'dmg');
+      updateBattleUI();
+      if (m.hp <= 0) {
+        run.kills++;
+        bt.xpKills++;
+        log('☠️ ' + m.name + ' — 상태이상으로 쓰러졌다!');
+        btMsg('☠ ' + m.name + ' 도트 피해로 사망!');
+        setTimeout(next, T.MOB_GAP * 0.6);
+        return;
+      }
+    }
+    if (tick.skip) {
+      floatText(enEl, '💫 기절!', 'info');
+      btMsg('💫 ' + m.name + '은(는) 기절해서 움직이지 못한다!');
+      updateBattleUI();
+      setTimeout(next, T.MOB_GAP * 0.7);
+      return;
+    }
+
+    const r = computeDamage(m, run.player, null, 0);
+    if (r.miss) {
+      floatText($('btPlRow'), 'MISS', 'miss');
+      btMsg('💨 ' + m.name + '의 공격을 회피했다!');
+      setTimeout(next, T.MOB_GAP * 0.7);
+      return;
+    }
     let dmg = r.dmg;
-    if (bt.defending) dmg = Math.max(1, Math.round(dmg * 0.5)); // 방어: 받는 피해 50%↓
-    run.player.hp = Math.max(0, run.player.hp - dmg);
+    if (bt.defending) dmg = Math.max(1, Math.trunc(dmg / 2));
+    const absorbed = Math.min(bt.shield, dmg);
+    if (absorbed > 0) {
+      bt.shield -= absorbed;
+      floatText($('btPlRow'), '🛡 -' + absorbed, 'info');
+    }
+    const real = dmg - absorbed;
+    run.player.hp = Math.max(0, run.player.hp - real);
 
     const plRow = $('btPlRow');
     flashHit(plRow);
     shake($('modalBox'));
-    floatText(plRow, '-' + dmg, r.crit ? 'crit' : 'dmg');
-    btMsg('💢 ' + m.name + '의 공격! -' + dmg + (bt.defending ? ' (방어)' : '') + (r.crit ? ' 크리!' : ''));
+    if (real > 0) floatText(plRow, '-' + real, r.crit ? 'crit' : 'dmg');
+    btMsg('💢 ' + m.name + '의 공격! -' + real +
+      (absorbed > 0 ? ' (실드 ' + absorbed + ' 흡수)' : '') +
+      (bt.defending ? ' (방어)' : '') + (r.crit ? ' 크리!' : ''));
     updateBattleUI();
 
-    if (run.player.hp <= 0) { loseBattle(); return; }
+    if (run.player.hp <= 0) {
+      if (run.reviveLeft) {
+        run.reviveLeft = false;
+        run.player.hp = Math.trunc(run.player.maxHp * bt.reviveRatio);
+        floatText(plRow, '✨ 부활!', 'heal');
+        btMsg('✨ 신앙의 힘으로 부활했다! HP ' + Math.round(bt.reviveRatio * 100) + '%');
+        log('✨ 부활! (런당 1회)');
+        updateBattleUI();
+        setTimeout(next, T.MOB_GAP);
+        return;
+      }
+      loseBattle();
+      return;
+    }
     setTimeout(next, T.MOB_GAP);
   };
   setTimeout(next, 460);
 }
 
+function endRound() {
+  if (!bt) return;
+  for (const s of run.skills) if (s.cur > 0) s.cur--;
+  if (aliveMonsters().length === 0) { winBattle(); return; }
+  setTimeout(playerTurnStart, 500);
+}
+
 function winBattle() {
   btMsg('🎉 승리!');
   const cb = bt.onWin;
+  // 경험치: 처치 수 × (5+층×3) × 보스 5배 (RunController.GainBattleXp)
+  const xp = bt.xpKills * B.monsterXp(run.floor) * (bt.isBoss ? B.BOSS_XP_MULT : 1);
   setTimeout(() => {
     bt = null;
     closeOverlay();
+    if (xp > 0) {
+      floatText($('token'), '+' + xp + ' XP', 'xp');
+      const gained = gainXp(run.sheet, xp);
+      log('✨ 경험치 +' + xp + (gained > 0 ? ' — 레벨 업!' : ''));
+      updateHUD();
+      if (gained > 0) { processProgression(cb); return; }
+    }
     cb();
   }, T.WIN_CLOSE);
 }
@@ -1171,11 +2102,174 @@ function loseBattle() {
 }
 
 /* =====================================================================
+ * PART E — 성장 UI (레벨업 배분 → 전직 → 스킬트리) + 층 클리어/결산
+ * ===================================================================== */
+let progressionDone = null; // 성장 체인 완료 후 콜백
+
+function processProgression(done) {
+  progressionDone = done || progressionDone || (() => endTurn());
+  const sh = run.sheet;
+  if (sh.statPoints > 0) { openLevelUp(); return; }
+  if (canJobChange(sh)) { openJobChange(); return; }
+  if (sh.points > 0 && skillPool(sh).some(d => canLearn(sh, d))) { openSkillTree(true); return; }
+  finishProgression();
+}
+function finishProgression() {
+  reequip();
+  refreshPlayer();
+  updateHUD();
+  const done = progressionDone;
+  progressionDone = null;
+  closeOverlay();
+  if (done) done();
+}
+
+/* ----- 레벨업 팝업: 6스탯 배분 (+3/레벨) ----- */
+function openLevelUp() {
+  uiMode = 'levelup';
+  const sh = run.sheet;
+  overlay(
+    '<div class="m-title lv">🆙 레벨 업! — Lv.' + sh.level + '</div>' +
+    '<div class="m-sub">' + jobName(sh) + ' — 스탯 포인트를 배분하세요 (레벨당 +3)</div>' +
+    '<div class="alloc-pts">남은 포인트 <span id="allocLeft">' + sh.statPoints + '</span></div>' +
+    '<div class="alloc-grid">' +
+    STAT_IDS.map(k =>
+      '<div class="alloc-row">' +
+        '<div class="an">' + STAT_INFO[k].icon + ' ' + STAT_INFO[k].n +
+          '<small>' + STAT_INFO[k].d + '</small></div>' +
+        '<div class="av" id="alloc-' + k + '">' + sh.stats[k] + '</div>' +
+        '<button class="alloc-plus" id="allocBtn-' + k + '" onclick="lvAlloc(\'' + k + '\')">+</button>' +
+      '</div>').join('') +
+    '</div>' +
+    '<button class="m-btn gold" id="btnLvOk" onclick="lvConfirm()" disabled>확인 (포인트를 모두 배분하세요)</button>'
+  );
+  refreshAllocUI();
+}
+function refreshAllocUI() {
+  const sh = run.sheet;
+  const left = $('allocLeft');
+  if (!left) return;
+  left.textContent = sh.statPoints;
+  STAT_IDS.forEach(k => {
+    const v = $('alloc-' + k), b = $('allocBtn-' + k);
+    if (v) v.textContent = sh.stats[k];
+    if (b) b.disabled = sh.statPoints <= 0;
+  });
+  const ok = $('btnLvOk');
+  if (ok) {
+    ok.disabled = sh.statPoints > 0;
+    ok.textContent = sh.statPoints > 0 ? '확인 (포인트를 모두 배분하세요)' : '✔ 확인';
+  }
+}
+function lvAlloc(k) {
+  const sh = run.sheet;
+  if (sh.statPoints <= 0) return;
+  sh.stats[k]++;
+  sh.statPoints--;
+  refreshAllocUI();
+}
+function lvConfirm() {
+  if (run.sheet.statPoints > 0) return;
+  refreshPlayer();
+  processProgression();
+}
+
+/* ----- 전직: 레벨 8, 2택1 카드 ----- */
+function openJobChange() {
+  uiMode = 'jobchange';
+  const paths = pathsFor(run.sheet.job);
+  const bonusText = p => STAT_IDS.filter(k => p.bonus[k] > 0)
+    .map(k => STAT_INFO[k].n + ' +' + p.bonus[k]).join(' · ');
+  overlay(
+    '<div class="m-title lv">⚜️ 전직의 시간!</div>' +
+    '<div class="m-sub">레벨 ' + B.JOB_CHANGE_LEVEL + ' 달성 — 두 번째 직업을 선택하세요 (보너스 스탯 +10)</div>' +
+    '<div class="jobcards">' +
+    paths.map(p =>
+      '<div class="jobcard" onclick="pickJob(\'' + p.id + '\')">' +
+        '<div class="ji">' + p.icon + '</div>' +
+        '<div class="jn">' + p.name + '</div>' +
+        '<div class="jb">' + bonusText(p) + '</div>' +
+        '<div class="jd">' + p.desc + '<br>' +
+          p.tree.map(s => s.name).join(' · ') + '</div>' +
+      '</div>').join('') +
+    '</div>'
+  );
+}
+function pickJob(pathKey) {
+  if (!jobChange(run.sheet, pathKey)) return;
+  const p = PATHS[pathKey];
+  log('⚜️ ' + p.name + '(으)로 전직했다! (+10 보너스 스탯)');
+  refreshPlayer();
+  updateHUD();
+  processProgression();
+}
+
+/* ----- 스킬트리: 선행 조건 잠금 표시, 포인트 학습 (레벨 1~5) ----- */
+function openSkillTree(inChain) {
+  uiMode = 'skilltree';
+  renderSkillTree(inChain);
+}
+function renderSkillTree(inChain) {
+  const sh = run.sheet;
+  const equipped = new Set(equipActives(sh).map(s => s.defId));
+  const section = (title, defs) =>
+    '<div class="tree-sec">' + title + '</div>' +
+    defs.map(def => {
+      const lv = levelOf(sh, def.id);
+      const lockText = def.prereqId && levelOf(sh, def.prereqId) < def.prereqLv
+        ? '🔒 선행: ' + (skillPool(sh).find(d => d.id === def.prereqId) || { name: def.prereqId }).name + ' Lv.' + def.prereqLv + ' 필요'
+        : '';
+      const learnable = canLearn(sh, def);
+      return '<div class="sk-row' + (lockText ? ' locked' : '') + '">' +
+        '<div class="sk-icon">' + skillIcon(def) + '</div>' +
+        '<div class="sk-body">' +
+          '<div class="sk-name">' + def.name + ' <span class="sk-lv">Lv.' + lv + '/' + def.maxLv + '</span>' +
+            (equipped.has(def.id) ? ' <span class="sk-eq">⭐장착</span>' : '') + '</div>' +
+          '<div class="sk-desc">' + skillDesc(def, lv || 1) + '</div>' +
+          (lockText ? '<div class="sk-lock">' + lockText + '</div>' : '') +
+        '</div>' +
+        (lv >= def.maxLv
+          ? '<button class="sk-btn" disabled>MAX</button>'
+          : '<button class="sk-btn" onclick="learnSk(\'' + def.id + '\')"' + (learnable ? '' : ' disabled') + '>배우기</button>') +
+      '</div>';
+    }).join('');
+
+  let html =
+    '<div class="m-title">📖 스킬 트리 — ' + jobName(sh) + '</div>' +
+    '<div class="tree-pts">스킬 포인트 <b>' + sh.points + '</b> (액티브는 계수 상위 ' + B.SKILL_SLOTS + '개 자동 장착)</div>' +
+    section('1차 — ' + CHARS[sh.job].name, BASE_TREES[sh.job]);
+  if (sh.advanced) html += section('2차 — ' + PATHS[sh.advanced].name, PATHS[sh.advanced].tree);
+  html += '<button class="m-btn gold" onclick="closeTree()">' + (inChain ? '✔ 완료' : '닫기') + '</button>';
+  overlay(html);
+}
+function learnSk(id) {
+  const sh = run.sheet;
+  const def = skillPool(sh).find(d => d.id === id);
+  if (!def || !learnSkill(sh, def)) return;
+  log('📖 ' + def.name + ' Lv.' + levelOf(sh, id) + ' 습득!');
+  renderSkillTree(progressionDone != null);
+}
+function closeTree() {
+  if (progressionDone) { finishProgression(); return; }
+  reequip();
+  refreshPlayer();
+  updateHUD();
+  closeOverlay();
+  endTurn();
+}
+function openTreeFromBar() {
+  if (busy || !run || !run.alive || uiMode !== 'idle') return;
+  setBusy(true);
+  uiMode = 'skilltree';
+  openSkillTree(false);
+}
+
+/* =====================================================================
  * 층 클리어 / 하강·귀환 / 결산
  * ===================================================================== */
 function floorClear() {
   run.floorsCleared = run.floor;
-  const healed = healRatio(B.FLOOR_CLEAR_HEAL); // 층 클리어 35% 회복
+  const healed = healRatio(B.FLOOR_CLEAR_HEAL);
   log('🏆 ' + run.floor + '층 클리어! HP +' + healed + ' (35% 회복)');
 
   if (run.floor >= B.FINAL_FLOOR) {
@@ -1184,13 +2278,16 @@ function floorClear() {
   }
   const nf = run.floor + 1;
   const p = run.player;
+  uiMode = 'floorclear';
   overlay(
     '<div class="m-title">🏆 ' + run.floor + '층 클리어!</div>' +
     '<div class="m-sub">층 클리어 보상: HP 35% 회복 → ❤️ ' + p.hp + ' / ' + p.maxHp + '</div>' +
     '<div class="m-rows">' +
       '<div class="row"><span>다음 층</span><span>' + nf + '층 — ' + themeOf(nf).name + '</span></div>' +
+      '<div class="row"><span>몬스터 속성</span><span>' + ELEM_INFO[floorElement(nf)].icon + ' ' +
+        ELEM_INFO[floorElement(nf)].n + '</span></div>' +
       '<div class="row"><span>몬스터 HP / 공격</span><span>' + B.monsterHp(nf) + ' / ' + B.monsterAtk(nf) + '</span></div>' +
-      '<div class="row"><span>현재 예상 소울스톤</span><span>💠 ' + B.soulstonesForRun(run.floorsCleared, run.kills) + '</span></div>' +
+      '<div class="row"><span>현재 예상 소울스톤</span><span>💠 ' + calcStones(false) + '</span></div>' +
     '</div>' +
     '<button class="m-btn danger" onclick="descend()">⬇️ 하강 — 더 큰 보상, 사망 시 70%만 회수</button>' +
     '<button class="m-btn gold" onclick="retreat()">🏠 귀환 — 소울스톤 100% 회수</button>'
@@ -1208,18 +2305,23 @@ function retreat() {
   closeOverlay();
   endRun(false, false);
 }
-
 function die() {
   run.alive = false;
   setBusy(true);
   endRun(true, false);
 }
-
+/* 소울스톤: (층×10 + 킬) × 영혼 수확기, 사망 시 70% (RunController.Play) */
+function calcStones(died) {
+  let stones = B.soulstonesForRun(run.floorsCleared, run.kills) * run.mods.soulMult;
+  if (died) stones *= B.DEATH_PENALTY;
+  return Math.trunc(stones);
+}
 function endRun(died, victory) {
   setBusy(true);
-  let stones = B.soulstonesForRun(run.floorsCleared, run.kills);
-  if (died) stones = Math.floor(stones * B.DEATH_PENALTY);
+  uiMode = 'result';
+  const stones = calcStones(died);
   run.pendingStones = stones;
+  run.died = died;
 
   const title = victory ? '🏆 심연 정복!' : died ? '💀 사망...' : '🏠 귀환 완료';
   const sub = victory ? '15층 최종 보스를 쓰러뜨렸다! 런 승리!'
@@ -1230,6 +2332,7 @@ function endRun(died, victory) {
     '<div class="m-title' + (died ? ' boss' : '') + '">' + title + '</div>' +
     '<div class="m-sub">' + sub + '</div>' +
     '<div class="m-rows">' +
+      '<div class="row"><span>직업</span><span>' + jobName(run.sheet) + ' Lv.' + run.sheet.level + '</span></div>' +
       '<div class="row"><span>클리어한 층</span><span>' + run.floorsCleared + '층</span></div>' +
       '<div class="row"><span>처치한 몬스터</span><span>' + run.kills + '마리</span></div>' +
       '<div class="row"><span>획득 장비</span><span>' + run.gearCount + '개</span></div>' +
@@ -1243,18 +2346,32 @@ function endRun(died, victory) {
 }
 function backToTown() {
   meta.soul += run.pendingStones || 0;
+  meta.totalRuns++;
+  if (run.floorsCleared > meta.bestFloor) meta.bestFloor = run.floorsCleared;
   saveMeta();
   run = null;
   bt = null;
   busy = false;
+  uiMode = 'town';
   closeOverlay();
   renderTown();
   showScreen('town');
 }
 
 /* =====================================================================
- * 초기화
+ * 디버그/자동 검증 훅 + 초기화
  * ===================================================================== */
+window.DD = {
+  get run() { return run; },
+  get bt() { return bt; },
+  get meta() { return meta; },
+  set meta(m) { meta = m; },
+  get uiMode() { return uiMode; },
+  get busy() { return busy; },
+  xpToLevel, skillPool, canLearn, levelOf, equipActives, pathsFor,
+  CHARS, PATHS, BASE_TREES, B, RELICS
+};
+
 window.addEventListener('resize', () => { if (run) placeToken(false); });
 loadMeta();
 renderTown();
