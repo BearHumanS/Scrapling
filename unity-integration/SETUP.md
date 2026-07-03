@@ -2,6 +2,17 @@
 
 이 폴더는 로컬 Unity 프로젝트에 그대로 넣는 통합 패키지입니다. **씬을 코드로 자동 구성**하므로 프리팹/인스펙터 배선이 필요 없습니다 — 빈 씬에 스크립트 하나 붙이고 Play.
 
+## 0. Unity 설치 (처음이라면)
+
+1. https://unity.com/download 에서 **Unity Hub** 다운로드·설치
+2. Unity Hub 실행 → 우측 상단에서 Unity 계정 로그인 (무료 Personal 라이선스 자동 활성화)
+3. **Installs → Install Editor → Unity 6 LTS** (6000.x, LTS 표시된 것) 선택
+4. 모듈 선택 (여기서 체크 안 하면 나중에 Hub에서 추가 가능):
+   - ✅ **Android Build Support** (하위 항목 OpenJDK, Android SDK & NDK Tools 포함 전부)
+   - ✅ **iOS Build Support** — 단, iOS **빌드 제출**은 macOS + Xcode에서만 가능.
+     Windows 개발이라면: 개발·테스트는 Android로 진행하고, iOS 빌드는 Mac을 빌릴 때 몰아서 처리
+5. 설치 완료까지 15~40분 (약 8GB) — 그동안 아래 1~2단계의 저장소 파일을 준비
+
 ## 1. 프로젝트 생성
 
 1. Unity Hub → New Project → **2D (URP)** 템플릿, Unity 6 LTS
