@@ -1,0 +1,250 @@
+:root {
+  --bg: #060a12;
+  --panel: #101a2b;
+  --line: rgba(148, 163, 184, 0.22);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --gold: #fbbf24;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+#app {
+  position: relative;
+  width: min(100%, 460px);
+  /* height:100% 이어야 #stage 의 flex-grow 가 실제로 배분할 여유 공간을 갖고,
+     캔버스의 max-height:100% 가 확정된 높이에 대해 해석된다. */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(180deg, #0b1220, #060a12);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- 상단 스탯 ---------- */
+#stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.stat {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 4px;
+  text-align: center;
+  min-width: 0;
+}
+
+.stat .label {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.stat .value {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#stat-gold { color: var(--gold); }
+#stat-hp { color: #7dd3fc; }
+#stat-dps { color: #f472b6; }
+
+/* ---------- 캔버스 ----------
+   canvas 는 대체 요소라 max-width/max-height 만 주면 브라우저가
+   540:960 고유 비율을 유지한 채 축소한다. 비율이 유지되어야
+   getBoundingClientRect 기반 클릭 좌표 변환이 정확하다. */
+#stage {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#btn-speed {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(15, 23, 42, 0.85);
+}
+
+#game {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  background: #060a12;
+  touch-action: none;
+  cursor: pointer;
+}
+
+/* ---------- 하단 컨트롤 ---------- */
+#controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+button {
+  font-family: inherit;
+  color: var(--text);
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.06s;
+  line-height: 1.25;
+}
+
+button:hover:not(:disabled) { background: rgba(51, 65, 85, 0.9); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: 0.4; cursor: default; }
+
+button small {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+button.primary {
+  background: linear-gradient(180deg, #0ea5e9, #0369a1);
+  border-color: #38bdf8;
+}
+button.primary small { color: rgba(255, 255, 255, 0.8); }
+
+button.skill {
+  background: linear-gradient(180deg, #f59e0b, #b45309);
+  border-color: #fbbf24;
+  color: #1c1917;
+}
+button.skill small { color: rgba(28, 25, 23, 0.75); }
+
+button.toggle.on {
+  background: rgba(34, 197, 94, 0.22);
+  border-color: #4ade80;
+  color: #bbf7d0;
+}
+
+#controls .tiny { font-size: 12px; }
+
+/* ---------- 업그레이드 패널 ---------- */
+#panel {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 18, 0.94);
+  backdrop-filter: blur(4px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+  overflow-y: auto;
+  z-index: 5;
+}
+#panel.open { transform: translateY(0); }
+
+#panel h2 {
+  margin: 0;
+  font-size: 17px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upgrade {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: rgba(30, 41, 59, 0.7);
+}
+
+.upgrade .u-name { font-size: 13px; font-weight: 700; }
+.upgrade .u-desc { font-size: 11px; color: var(--muted); }
+.upgrade .u-main { flex: 1; min-width: 0; }
+.upgrade .u-lv {
+  font-size: 11px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  min-width: 46px;
+}
+.upgrade .u-cost {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#panel-close { align-self: stretch; }
+
+.hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+/* ---------- 게임 오버 ---------- */
+#gameover {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 18, 0.92);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 10;
+  padding: 20px;
+  text-align: center;
+}
+#gameover.open { display: flex; }
+#gameover h2 { margin: 0; font-size: 26px; color: #f87171; }
+#gameover p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.7; }
+#btn-restart { padding: 12px 28px; font-size: 15px; }

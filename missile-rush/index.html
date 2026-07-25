@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>미사일 키우기 : 궤도 방어전</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <div id="stats">
+    <div class="stat"><span class="label">골드</span><span class="value" id="stat-gold">0</span></div>
+    <div class="stat"><span class="label">웨이브</span><span class="value" id="stat-wave">0</span></div>
+    <div class="stat"><span class="label">기지</span><span class="value" id="stat-hp">20/20</span></div>
+    <div class="stat"><span class="label">DPS</span><span class="value" id="stat-dps">0</span></div>
+  </div>
+
+  <div id="stage">
+    <canvas id="game" width="540" height="960" aria-label="미사일 키우기 게임 화면"></canvas>
+    <button id="btn-speed">x1</button>
+  </div>
+
+  <div id="controls">
+    <button id="btn-summon" class="primary">소환<small>25G</small></button>
+    <button id="btn-skill" class="skill">궤도 폭격<small>준비 완료</small></button>
+    <button id="btn-upgrades">업그레이드<small>강화 목록</small></button>
+    <button id="btn-automerge" class="toggle tiny">자동 합성</button>
+    <button id="btn-autosummon" class="toggle tiny">자동 소환</button>
+    <button id="btn-priority" class="tiny">조준<small>선두</small></button>
+  </div>
+
+  <div id="panel">
+    <h2>업그레이드 <button id="panel-close" style="width:auto;padding:6px 14px;font-size:12px">닫기</button></h2>
+
+    <button class="upgrade" data-buy="power">
+      <span class="u-lv">Lv.0</span>
+      <span class="u-main"><span class="u-name">탄두 위력</span><br><span class="u-desc">-</span></span>
+      <span class="u-cost">-</span>
+    </button>
+    <button class="upgrade" data-buy="rate">
+      <span class="u-lv">Lv.0</span>
+      <span class="u-main"><span class="u-name">장전 속도</span><br><span class="u-desc">-</span></span>
+      <span class="u-cost">-</span>
+    </button>
+    <button class="upgrade" data-buy="gold">
+      <span class="u-lv">Lv.0</span>
+      <span class="u-main"><span class="u-name">자금 회수</span><br><span class="u-desc">-</span></span>
+      <span class="u-cost">-</span>
+    </button>
+    <button class="upgrade" data-buy="grade">
+      <span class="u-lv">Lv.0</span>
+      <span class="u-main"><span class="u-name">소환 등급</span><br><span class="u-desc">-</span></span>
+      <span class="u-cost">-</span>
+    </button>
+    <button class="upgrade" data-buy="slot">
+      <span class="u-lv">Lv.0</span>
+      <span class="u-main"><span class="u-name">발사대 개방</span><br><span class="u-desc">-</span></span>
+      <span class="u-cost">-</span>
+    </button>
+    <button class="upgrade" data-buy="repair">
+      <span class="u-lv">Lv.0</span>
+      <span class="u-main"><span class="u-name">기지 보강</span><br><span class="u-desc">-</span></span>
+      <span class="u-cost">-</span>
+    </button>
+
+    <p class="hint">
+      · 빈 발사대를 누르면 미사일을 <b>소환</b>합니다.<br>
+      · 같은 등급 미사일을 드래그해 겹치면 <b>합성</b>되어 한 단계 위로 올라갑니다.<br>
+      · 다른 등급끼리 겹치면 자리만 <b>교체</b>됩니다.<br>
+      · 미사일은 사거리 제한 없이 유도 비행하며, 조준 우선순위를 바꿀 수 있습니다.<br>
+      · 10웨이브마다 <b>보스</b>가 등장하고, 기지 내구도가 0이 되면 종료됩니다.
+    </p>
+  </div>
+
+  <div id="gameover">
+    <h2>기지 파괴</h2>
+    <p id="gameover-text"></p>
+    <button id="btn-restart" class="primary">다시 시작</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
