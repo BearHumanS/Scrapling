@@ -821,4 +821,17 @@
 
   S = newGame();
   requestAnimationFrame(loop);
+
+  /* 밸런스 튜닝용 콘솔 훅. 예) MissileRush.setWave(30) 으로 후반 구간을 바로 확인 */
+  window.MissileRush = {
+    get state() { return S; },
+    reset() { ui.over.classList.remove('open'); S = newGame(); },
+    setWave(n) {
+      S.wave = Math.max(0, n - 1);
+      S.enemies.length = 0; S.spawnQueue.length = 0;
+      S.waveState = 'ready'; S.waveTimer = 0.3;
+    },
+    damageBase(n) { S.baseHp -= n; },
+    give(gold) { S.gold += gold; },
+  };
 })();
